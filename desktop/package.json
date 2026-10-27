@@ -1,0 +1,49 @@
+{
+  "name": "@watershed/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Administrative desktop dashboard for the Tillery Street volunteer application.",
+  "author": "Tillery Street Volunteer Group",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p electron/tsconfig.json",
+    "build:renderer": "npm run typecheck && vite build && node ../scripts/verify-no-source-maps.mjs dist dist-electron",
+    "audit:release": "npm audit --workspace @watershed/desktop --include=dev",
+    "build": "npm run audit:release && npm run build:renderer && electron-builder",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@watershed/shared": "*",
+    "firebase": "^12.19.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.7.0",
+    "pdfjs-dist": "^6.3.289",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^22.20.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.6.1",
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
+    "electron": "44.5.1",
+    "electron-builder": "^26.17.0",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.2",
+    "vite-plugin-electron": "^1.1.2",
+    "vitest": "^5.0.3",
+    "wait-on": "^9.1.0"
+  }
+}

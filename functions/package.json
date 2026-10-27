@@ -1,0 +1,36 @@
+{
+  "name": "functions",
+  "license": "MIT",
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "build": "node ../scripts/sync-config-to-functions.mjs && tsc",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "lib/functions/src/index.js",
+  "dependencies": {
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.3.2",
+    "nodemailer": "^10.2.1"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^8.0.2",
+    "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "@fastify/busboy": "3.2.2",
+    "qs": "6.16.1",
+    "gaxios@6": {
+      "uuid": "11.1.1"
+    },
+    "protobufjs": "7.6.6",
+    "@grpc/grpc-js": "1.14.5",
+    "brace-expansion": "2.1.7",
+    "proxy-addr": "2.0.8"
+  },
+  "private": true
+}

@@ -1,0 +1,91 @@
+name: Deploy Firebase Backend
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type deploy-production-backend to deploy Functions and security rules from main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: firebase-production-backend
+  cancel-in-progress: false
+
+jobs:
+  verify-and-deploy:
+    name: Verify and deploy production backend
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      inputs.confirmation == 'deploy-production-backend'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production-backend
+    env:
+      FIREBASE_CLI_DISABLE_UPDATE_CHECK: 'true'
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.1
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+
+      - name: Set up Java for Firebase emulators
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Validate deployment variables
+        run: |
+          if [[ -z "$FIREBASE_PROJECT_ID" ]]; then
+            echo "Missing GitHub Environment variable: FIREBASE_PROJECT_ID" >&2
+            exit 1
+          fi
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit
+
+      - name: Install standalone Functions dependencies
+        working-directory: functions
+        run: npm ci --workspaces=false --no-audit
+
+      - name: Install Chromium for integration tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run complete backend quality gate
+        run: |
+          npm run audit:production
+          npm run ci
+          npm run test:rules
+          npm run test:e2e
+
+      - name: Deploy Functions in reviewed batches
+        run: node scripts/deploy-security-functions.mjs --apply
+
+      - name: Deploy Firestore and Storage policy
+        run: >-
+          node node_modules/firebase-tools/lib/bin/firebase.js deploy
+          --only firestore:rules,firestore:indexes,storage
+          --project "$FIREBASE_PROJECT_ID"
+          --non-interactive

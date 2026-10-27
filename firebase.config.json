@@ -1,0 +1,24 @@
+{
+  "_meta": "Single source of truth for emulator ports, regions, and the emulator demo project id. firebase.json mirrors the emulator ports below — scripts/verify-emulator-config.mjs fails the build if they drift.",
+  "emulatorProjectId": "demo-watershed",
+  "region": "us-central1",
+  "desktopAppId": "1:224851969688:web:41d465f0b1007ac8cd72ed",
+  "emulators": {
+    "auth": { "host": "127.0.0.1", "port": 9099 },
+    "firestore": { "host": "127.0.0.1", "port": 8080 },
+    "storage": { "host": "127.0.0.1", "port": 9199 },
+    "functions": { "host": "127.0.0.1", "port": 5001 },
+    "hosting": { "host": "127.0.0.1", "port": 5000 },
+    "ui": { "enabled": false, "port": 4000 }
+  },
+  "devOrigins": [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:5176"
+  ]
+}

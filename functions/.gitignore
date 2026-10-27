@@ -1,0 +1,15 @@
+# Compiled JavaScript and source map files
+/lib/
+
+# TypeScript v1 declaration files
+typings/
+
+# Node.js dependency directory
+node_modules/
+
+# Local runtime configuration. Commit only the sanitized example.
+.env
+.env.*
+!.env.example
+*.local
+*.log

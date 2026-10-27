@@ -1,0 +1,190 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, staging, main]
+  push:
+    branches: [dev, staging, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.1
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            app/package-lock.json
+            functions/package-lock.json
+
+      - name: Set up Java for Firebase emulators
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit
+
+      - name: Audit root production dependencies
+        run: npm audit --omit=dev
+
+      - name: Install, audit, and build standalone Functions deployment dependencies
+        working-directory: functions
+        run: |
+          npm ci --workspaces=false --no-audit
+          npm audit --omit=dev --workspaces=false
+          npm run build --workspaces=false
+          node ../scripts/verify-storage-runtime-auth.mjs
+
+      - name: Verify Firebase/runtime configuration
+        run: |
+          npm run verify:public
+          npm run verify:config
+          npm run verify:preview-domains
+
+      - name: Lint and type-check
+        run: |
+          npm run lint
+          npm run typecheck
+
+      - name: Run frontend tests with coverage
+        env:
+          VITE_FIREBASE_API_KEY: test
+          VITE_FIREBASE_AUTH_DOMAIN: demo-watershed.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: demo-watershed
+          VITE_FIREBASE_STORAGE_BUCKET: demo-watershed.appspot.com
+          VITE_FIREBASE_MESSAGING_SENDER_ID: '000000000000'
+          VITE_FIREBASE_APP_ID: '1:000000000000:web:test'
+          VITE_USE_FIREBASE_EMULATORS: 'true'
+          VITE_FIREBASE_EMULATOR_HOST: 127.0.0.1
+        run: npm run test:coverage
+
+      - name: Build app and Firebase Functions
+        run: npm run build
+
+      - name: Verify explicit Function identities and secret isolation
+        run: |
+          npm run verify:runtime-identities
+          npm run verify:development
+
+      - name: Run Firestore and Storage rules tests
+        env:
+          FIREBASE_CLI_DISABLE_UPDATE_CHECK: 'true'
+        run: npm run test:rules
+
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify desktop authentication and build
+        run: |
+          npm run test --workspace @watershed/desktop
+          npm run build:renderer --workspace @watershed/desktop
+
+      - name: Run browser and callable integration tests
+        env:
+          FIREBASE_CLI_DISABLE_UPDATE_CHECK: 'true'
+        run: npm run test:e2e
+
+      - name: Upload browser-test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: app/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  deploy-preview:
+    name: Deploy ${{ github.ref_name }} preview
+    needs: quality-gate
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: ${{ github.ref_name == 'dev' && 'development' || 'staging' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      FIREBASE_CLI_DISABLE_UPDATE_CHECK: 'true'
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      VITE_FIREBASE_MEASUREMENT_ID: ${{ vars.VITE_FIREBASE_MEASUREMENT_ID }}
+      VITE_RECAPTCHA_SITE_KEY: ${{ vars.VITE_RECAPTCHA_SITE_KEY }}
+      VITE_RECAPTCHA_PROVIDER: ${{ vars.VITE_RECAPTCHA_PROVIDER }}
+      # Optional: the public Web Push (VAPID) key. Without it, push stays off.
+      VITE_FIREBASE_VAPID_KEY: ${{ vars.VITE_FIREBASE_VAPID_KEY }}
+
+    steps:
+      - name: Check out the verified commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Validate deployment variables
+        shell: bash
+        run: |
+          required=(
+            FIREBASE_PROJECT_ID VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN
+            VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_STORAGE_BUCKET
+            VITE_FIREBASE_MESSAGING_SENDER_ID VITE_FIREBASE_APP_ID
+            VITE_RECAPTCHA_SITE_KEY
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing GitHub Environment variable: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit
+
+      - name: Deploy isolated development backend and preview site
+        if: github.ref == 'refs/heads/dev'
+        run: npm run deploy:dev -- --apply
+
+      - name: Deploy stable staging preview channel
+        if: github.ref == 'refs/heads/staging'
+        env:
+          CHANNEL_ID: ${{ github.ref_name }}
+        run: >-
+          node node_modules/firebase-tools/lib/bin/firebase.js
+          hosting:channel:deploy "$CHANNEL_ID"
+          --expires 30d
+          --project "$FIREBASE_PROJECT_ID"
+          --non-interactive

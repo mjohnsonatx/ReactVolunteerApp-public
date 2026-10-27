@@ -1,0 +1,16 @@
+# desktop/electron-builder.yml
+appId: app.tillerystreettrail.admin
+productName: Watershed Admin
+directories:
+  output: release
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+asar: true
+mac:
+  target: dmg
+win:
+  target: nsis
+linux:
+  target: AppImage

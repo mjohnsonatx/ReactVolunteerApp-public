@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 100 312 312">
+  <title>WatershedCrew notification badge</title>
+  <defs>
+    <mask id="leaf-vein" maskUnits="userSpaceOnUse" x="100" y="100" width="312" height="312">
+      <rect x="100" y="100" width="312" height="312" fill="#fff"/>
+      <path d="M192 278c24-37 57-72 98-103" fill="none" stroke="#000" stroke-width="20" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <path d="M187 270C157 195 215 128 346 126c4 106-61 169-145 139Z" fill="#fff" mask="url(#leaf-vein)"/>
+  <path d="M151 316c70-44 140 44 210 0" fill="none" stroke="#fff" stroke-width="28" stroke-linecap="round"/>
+  <path d="M165 375c61-38 121 38 182 0" fill="none" stroke="#fff" stroke-width="25" stroke-linecap="round"/>
+</svg>

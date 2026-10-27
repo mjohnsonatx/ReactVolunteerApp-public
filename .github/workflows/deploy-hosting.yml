@@ -1,0 +1,88 @@
+name: Deploy Production Hosting
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type deploy-production to publish main to the live Hosting site
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: firebase-production-hosting
+  cancel-in-progress: false
+
+jobs:
+  production:
+    name: Deploy main to production
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      inputs.confirmation == 'deploy-production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      FIREBASE_CLI_DISABLE_UPDATE_CHECK: 'true'
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      VITE_FIREBASE_MEASUREMENT_ID: ${{ vars.VITE_FIREBASE_MEASUREMENT_ID }}
+      VITE_RECAPTCHA_SITE_KEY: ${{ vars.VITE_RECAPTCHA_SITE_KEY }}
+      # Optional: the public Web Push (VAPID) key. Without it, push stays off.
+      VITE_FIREBASE_VAPID_KEY: ${{ vars.VITE_FIREBASE_VAPID_KEY }}
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.1
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Validate deployment variables
+        shell: bash
+        run: |
+          required=(
+            FIREBASE_PROJECT_ID VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN
+            VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_STORAGE_BUCKET
+            VITE_FIREBASE_MESSAGING_SENDER_ID VITE_FIREBASE_APP_ID
+            VITE_FIREBASE_MEASUREMENT_ID VITE_RECAPTCHA_SITE_KEY
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing GitHub Environment variable: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit
+
+      - name: Audit production dependencies
+        run: npm run audit:production
+
+      - name: Deploy live Hosting site
+        run: >-
+          node node_modules/firebase-tools/lib/bin/firebase.js deploy
+          --only hosting
+          --project "$FIREBASE_PROJECT_ID"
+          --non-interactive

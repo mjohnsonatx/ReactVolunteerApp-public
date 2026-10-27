@@ -1,0 +1,56 @@
+{
+  "name": "watershedcrew",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "app", "functions", "shared", "desktop"
+  ],
+  "engines": {
+    "node": "22"
+  },
+  "devDependencies": {
+      "@firebase/rules-unit-testing": "^5.0.1",
+      "@playwright/test": "^1.60.0",
+      "@testing-library/jest-dom": "^6.9.1",
+      "@testing-library/react": "^16.3.2",
+      "@testing-library/user-event": "^14.6.1",
+      "@vitest/coverage-v8": "^5.0.3",
+      "firebase-tools": "^15.32.1",
+      "jsdom": "^29.1.1",
+      "vitest": "^5.0.3"
+    },
+  "overrides": {
+    "@fastify/busboy": "3.2.2",
+    "qs": "6.16.1",
+    "gaxios@6": {
+      "uuid": "11.1.1"
+    },
+    "@grpc/grpc-js": "1.14.5",
+    "@google-cloud/pubsub": {
+      "@opentelemetry/core": "2.8.0"
+    },
+    "get-uri": {
+      "basic-ftp": "6.2.1"
+    }
+  },
+  "scripts": {
+    "verify:public": "node scripts/verify-public-repo.mjs",
+    "verify:config": "node scripts/verify-emulator-config.mjs",
+    "verify:preview-domains": "node scripts/verify-preview-domain-policy.mjs",
+    "verify:runtime-identities": "node scripts/verify-runtime-identities.mjs",
+    "verify:storage-auth": "node scripts/verify-storage-runtime-auth.mjs",
+    "audit:production": "npm audit --omit=dev && npm --prefix functions audit --omit=dev --workspaces=false",
+    "lint": "npm run lint --workspace app && npm run lint --workspace functions",
+    "typecheck": "npm run typecheck --workspace app && npm run typecheck --workspace functions",
+    "test": "npm run test:run --workspace app",
+    "test:coverage": "npm run test:cov --workspace app",
+    "test:rules": "npm run test:rules --workspace app",
+    "build": "npm run build --workspace functions && npm run build --workspace app",
+    "test:e2e": "npm run test:e2e --workspace app",
+    "preview:local": "node app/scripts/run-e2e.mjs --local-preview",
+    "deploy:dev": "npm run build --workspace functions && node scripts/deploy-development.mjs",
+    "verify:development": "node scripts/verify-development-isolation.mjs",
+    "ci": "npm run verify:public && npm run verify:config && npm run verify:preview-domains && npm run verify:storage-auth && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run verify:runtime-identities"
+  }
+}

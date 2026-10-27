@@ -1,0 +1,63 @@
+# Dependencies and generated build/test output.
+node_modules/
+/lib/
+app/dist/
+app/.local-preview-dist/
+desktop/dist/
+desktop/dist-electron/
+desktop/release/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+*.map
+
+# Environment files and credentials. Only sanitized examples are public.
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+**/*service-account*.json
+**/*service_account*.json
+**/*firebase-adminsdk*.json
+**/credentials.json
+
+# Logs and Firebase/Cloud CLI state.
+*.log
+/.firebase/
+/.firebase.e2e.*.json
+/.aws/
+/.codex/
+.firebase.dev.deploy.*.json
+.firestore-audit.local.md
+
+# Local agent integrations are installed per developer, not redistributed.
+/.agents/skills/
+/.claude/skills/
+/.claude/settings.local.json
+/skills-lock.json
+
+# Local privileged admin tooling must never contain a service-account key.
+/admin-tools/
+/app/setAdmin.js
+
+# Generated Functions configuration.
+src/generatedConfig.ts
+
+# Firebase policy source is intentionally tracked.
+firebase_rules/*
+!firebase_rules/firestore.rules
+!firebase_rules/storage.rules
+/firestore_v0.rules
+/storage.rules
+!/firestore.indexes.json
+
+# Local generated documents.
+/output/

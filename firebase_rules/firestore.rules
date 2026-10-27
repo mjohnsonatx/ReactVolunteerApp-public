@@ -1,0 +1,231 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Canonical project-wide ruleset. Every web, Android, and iOS client
+    // connected to this Firebase project is governed by the same deployed
+    // rules; client repositories must not maintain divergent policies.
+
+    // =============================================================
+    // Assumed data model and trust boundaries
+    // =============================================================
+    // users/{uid}: private profile/PII; owner or admin read.
+    // events/{id}: public event fields and trusted Storage paths only.
+    // documents/{id}: owner/admin only; public data is a callable projection.
+    // forumPosts/{id}: public only when status == "approved".
+    // forumAuthors/{encodedPostId}:{encodedReplyId}: anonymous-author identity
+    //   (postId, replyId, authorId, author, authorUserName, createdAt), MFA-admin
+    //   read only. Server-created atomically with redacted public content.
+    // forumAnonymousThreads/{postId}: private uid-to-number map, authorIds,
+    //   nextAlias counter; server-only writes, at most 1000 aliases per thread.
+    // overlays/{id}: public only when published == true.
+    // eventComments/eventCommentReports: admin direct read; callable-only
+    //   projections for members preserve anonymous-author confidentiality.
+    // polls/pollVotes: admin direct read; callable-only public projections
+    //   enforce result timing, privacy, and omit organizer notes/voter keys.
+    // mailingList, volunteers, errorLogs, adminAuditLogs, uploads and reports:
+    //   MFA-admin read only; writes remain server-owned.
+    // notificationSettings, notificationTokens (push registrations),
+    //   notificationDigestItems, notificationDispatches, notificationConfig:
+    //   no client access at all; members and admins use callables.
+    // All document mutations are server-owned callable/trigger operations;
+    // client writes are denied, so create/update validators live server-side.
+    // A final recursive match keeps every unspecified path default-denied.
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasAdminMfa() {
+      return (
+          request.auth.token.keys().hasAny(['firebase'])
+          && request.auth.token.firebase.keys().hasAny(['sign_in_second_factor'])
+          && request.auth.token.firebase.sign_in_second_factor == 'totp'
+        ) || (
+          request.auth.token.keys().hasAny(['desktop_admin_mfa'])
+          && request.auth.token.desktop_admin_mfa == true
+        );
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.keys().hasAny(['admin'])
+        && request.auth.token.admin == true
+        && request.auth.token.keys().hasAny(['email_verified'])
+        && request.auth.token.email_verified == true
+        && hasAdminMfa();
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    match /userNames/{userName} {
+      allow read, write: if false;
+    }
+
+    match /events/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /volunteers/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /mailingList/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /profileMessages/{id} {
+      // Admins read every contact message; the sender can read their own
+      // thread (including any admin reply). All mutations stay in Functions.
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /siteContent/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /rsvps/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /documents/{id} {
+      // Document records contain uploader identity/PII. Public listings use
+      // listPublicDocuments so Firestore never exposes the mixed private data.
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /forumPosts/{id} {
+      // Only approved posts are visible to visitors and members; admins can
+      // read everything, including pending/flagged content awaiting review.
+      // (Rules are not filters: non-admin queries must constrain
+      // status == 'approved' to be authorized.)
+      allow read: if isAdmin() || resource.data.status == 'approved';
+      allow write: if false;
+    }
+
+    match /forumReports/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /forumAuthors/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /forumAnonymousThreads/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Replies from moderated accounts remain outside approved forum documents
+    // until an admin callable approves them. This prevents nested array data
+    // from leaking through an otherwise public forum post read.
+    match /forumPendingReplies/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Upload tickets and quota counters are authority records consumed by
+    // Storage rules and server callables only. No client can inspect or alter
+    // another account's reservations or manufacture its own ticket.
+    match /documentUploadTickets/{id} {
+      allow read, write: if false;
+    }
+
+    match /documentUploadQuotas/{uid} {
+      allow read, write: if false;
+    }
+
+    match /overlays/{id} {
+      // Only published overlays reach visitors and members; admins can read
+      // unpublished/draft overlays for review. (Rules are not filters:
+      // non-admin queries must constrain published == true to be authorized.)
+      allow read: if isAdmin() || resource.data.published == true;
+      allow write: if false;
+    }
+
+    // Event discussion comments are served exclusively by callable Functions
+    // (listEventComments) so anonymous authors stay anonymous to other members
+    // while admins keep full visibility.
+    match /eventComments/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /eventCommentReports/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Poll definitions and running totals never leave the server directly:
+    // clients use the listPolls / getPoll / getPollResults callables so the
+    // result-visibility rules cannot be bypassed by reading the document.
+    match /polls/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /pollVotes/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /errorLogs/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /adminAuditLogs/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /overlayUploads/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Opt-in notifications. Push tokens are device credentials and the digest
+    // queue holds per-member activity, so neither is readable even by its
+    // owner; preferences and admin email settings flow through callables that
+    // never return tokens or the SMTP key.
+    match /notificationSettings/{uid} {
+      allow read, write: if false;
+    }
+
+    match /notificationTokens/{id} {
+      allow read, write: if false;
+    }
+
+    match /notificationDigestItems/{id} {
+      allow read, write: if false;
+    }
+
+    match /notificationDispatches/{id} {
+      allow read, write: if false;
+    }
+
+    match /notificationConfig/{id} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

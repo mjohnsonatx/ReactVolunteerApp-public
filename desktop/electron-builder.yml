@@ -1,0 +1,12 @@
+appId: org.tillerystreet.watershed.desktop
+productName: Tillery Street Admin
+directories:
+  output: release
+files:
+  - dist/**
+  - dist-electron/**
+linux:
+  target:
+    - AppImage
+  category: Utility
+asar: true

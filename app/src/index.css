@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+/*
+ * Public-site palette
+ *
+ * The default cyan/teal/gray scales made the volunteer experience feel cold
+ * and clinical. Keep the existing utility classes and their semantic intent,
+ * but give public pages the warmer colors found around Tillery Fields: linen,
+ * moss, sage, clay, goldenrod, creek water, pine, and brick. Scoping the
+ * variables keeps the web admin's visual language independent.
+ */
+.public-site-theme {
+  --color-white: #fffdf9;
+
+  --color-gray-50: #faf8f4;
+  --color-gray-100: #f4f0e8;
+  --color-gray-200: #e8e1d5;
+  --color-gray-300: #d6ccbb;
+  --color-gray-400: #a89d8c;
+  --color-gray-500: #7d7264;
+  --color-gray-600: #5d5449;
+  --color-gray-700: #47403a;
+  --color-gray-800: #2f2a26;
+  --color-gray-900: #1e1b18;
+  --color-gray-950: #141210;
+
+  --color-teal-50: #eef4ec;
+  --color-teal-100: #dbe8d6;
+  --color-teal-200: #b8d1b0;
+  --color-teal-300: #8fb587;
+  --color-teal-400: #659666;
+  --color-teal-500: #4a7c52;
+  --color-teal-600: #3b6543;
+  --color-teal-700: #2f5137;
+  --color-teal-800: #24402c;
+  --color-teal-900: #1a2f21;
+  --color-teal-950: #0f1d15;
+
+  --color-emerald-50: #eff6ea;
+  --color-emerald-100: #dcecd1;
+  --color-emerald-200: #bad9a6;
+  --color-emerald-300: #93c07a;
+  --color-emerald-400: #6fa456;
+  --color-emerald-500: #4c7839;
+  --color-emerald-600: #447032;
+  --color-emerald-700: #375928;
+  --color-emerald-800: #2b4520;
+  --color-emerald-900: #1f3218;
+  --color-emerald-950: #121f0e;
+
+  --color-cyan-50: #edf3f6;
+  --color-cyan-100: #d8e5ec;
+  --color-cyan-200: #b3cbd8;
+  --color-cyan-300: #86aabf;
+  --color-cyan-400: #5f8aa4;
+  --color-cyan-500: #47708a;
+  --color-cyan-600: #395b71;
+  --color-cyan-700: #2e4959;
+  --color-cyan-800: #243944;
+  --color-cyan-900: #1a2a33;
+  --color-cyan-950: #0f1a20;
+
+  --color-blue-50: #edf3f6;
+  --color-blue-100: #d8e5ec;
+  --color-blue-200: #b3cbd8;
+  --color-blue-300: #86aabf;
+  --color-blue-400: #5f8aa4;
+  --color-blue-500: #47708a;
+  --color-blue-600: #395b71;
+  --color-blue-700: #2e4959;
+  --color-blue-800: #243944;
+  --color-blue-900: #1a2a33;
+  --color-blue-950: #0f1a20;
+
+  --color-slate-50: #eef3ef;
+  --color-slate-100: #d9e3dc;
+  --color-slate-200: #b4c7ba;
+  --color-slate-300: #87a591;
+  --color-slate-400: #5f806a;
+  --color-slate-500: #46654f;
+  --color-slate-600: #37503f;
+  --color-slate-700: #2a3d31;
+  --color-slate-800: #1f2e25;
+  --color-slate-900: #16221b;
+  --color-slate-950: #0c1410;
+
+  --color-orange-50: #fbf1ec;
+  --color-orange-100: #f6e0d4;
+  --color-orange-200: #ecc2ac;
+  --color-orange-300: #df9f7e;
+  --color-orange-400: #cf7d56;
+  --color-orange-500: #aa5634;
+  --color-orange-600: #a04e2e;
+  --color-orange-700: #7f3f26;
+  --color-orange-800: #61311f;
+  --color-orange-900: #452418;
+  --color-orange-950: #2b150d;
+
+  --color-amber-50: #fbf5e6;
+  --color-amber-100: #f6e9c6;
+  --color-amber-200: #ecd48f;
+  --color-amber-300: #dfbb5a;
+  --color-amber-400: #cfa232;
+  --color-amber-500: #b8891f;
+  --color-amber-600: #966e18;
+  --color-amber-700: #745514;
+  --color-amber-800: #574010;
+  --color-amber-900: #3d2d0c;
+  --color-amber-950: #261b07;
+
+  --color-red-50: #fbeeec;
+  --color-red-100: #f7d9d5;
+  --color-red-200: #eeb3ab;
+  --color-red-300: #e08a7e;
+  --color-red-400: #cf6354;
+  --color-red-500: #b94a3c;
+  --color-red-600: #9a3a2f;
+  --color-red-700: #7a2f27;
+  --color-red-800: #5c251f;
+  --color-red-900: #421b17;
+  --color-red-950: #2a100d;
+}

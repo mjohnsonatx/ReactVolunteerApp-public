@@ -1,0 +1,185 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Canonical project-wide ruleset. Every client connected to this Firebase
+    // project is governed by the same deployed Storage policy.
+    function signedIn() { return request.auth != null; }
+    function hasAdminMfa() {
+      return (
+          request.auth.token.keys().hasAny(['firebase'])
+          && request.auth.token.firebase.keys().hasAny(['sign_in_second_factor'])
+          && request.auth.token.firebase.sign_in_second_factor == 'totp'
+        ) || (
+          request.auth.token.keys().hasAny(['desktop_admin_mfa'])
+          && request.auth.token.desktop_admin_mfa == true
+        );
+    }
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.keys().hasAny(['admin'])
+        && request.auth.token.admin == true
+        && request.auth.token.keys().hasAny(['email_verified'])
+        && request.auth.token.email_verified == true
+        && hasAdminMfa();
+    }
+    function isOwner(userId) { return signedIn() && request.auth.uid == userId; }
+    function isVerifiedOwner(userId) {
+      return isOwner(userId) && request.auth.token.email_verified == true;
+    }
+    function isAllowedDocumentType() {
+      return request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
+    }
+    function isAllowedDocumentSize() {
+      return request.resource.size <= 10 * 1024 * 1024;
+    }
+    function isSafeStoredDocument() {
+      return resource != null
+        && resource.size <= 10 * 1024 * 1024
+        && resource.contentType.matches('application/pdf|image/jpeg|image/png');
+    }
+    function hasDocumentTicketMetadata() {
+      return request.resource.metadata.keys().hasAll(['published', 'ticketId', 'role'])
+        && request.resource.metadata.keys().hasOnly(['published', 'ticketId', 'role'])
+        && request.resource.metadata.published == 'false'
+        && request.resource.metadata.ticketId is string
+        && request.resource.metadata.ticketId.matches('[a-z0-9]{24}')
+        && request.resource.metadata.role in ['document', 'thumbnail'];
+    }
+    function documentUploadTicketMatches(userId, fileName, ticketId) {
+      let ticket = firestore.get(/databases/(default)/documents/documentUploadTickets/$(ticketId));
+      return ticket.data.userId == userId
+        && ticket.data.status == 'issued'
+        && ticket.data.expiresAt > request.time
+        && (
+          (request.resource.metadata.role == 'document'
+            && fileName == ticket.data.fileName
+            && request.resource.contentType == ticket.data.contentType
+            && request.resource.size == ticket.data.sizeBytes
+            && isAllowedDocumentType()
+            && isAllowedDocumentSize())
+          ||
+          (request.resource.metadata.role == 'thumbnail'
+            && ticket.data.wantsThumbnail == true
+            && fileName == ticket.data.thumbnailFileName
+            && request.resource.contentType == 'image/jpeg'
+            && request.resource.size <= 1024 * 1024)
+        );
+    }
+    function hasValidDocumentUploadTicket(userId, fileName) {
+      return hasDocumentTicketMetadata()
+        && documentUploadTicketMatches(userId, fileName, request.resource.metadata.ticketId);
+    }
+    function isAllowedProfileImageType() {
+      return request.resource.contentType.matches('image/jpeg|image/png');
+    }
+    function isAllowedProfileImageSize() {
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+    function isProfileImage(fileName) {
+      return fileName.matches('profile_[A-Za-z0-9_.-]+');
+    }
+    function isStoredProfileImage(fileName) {
+      return isProfileImage(fileName)
+        && resource != null
+        && resource.size <= 5 * 1024 * 1024
+        && resource.contentType.matches('image/jpeg|image/png');
+    }
+
+    match /documents/{userId}/{fileName} {
+
+      // Read allowed if:
+      //  (a) the file is explicitly marked published, OR
+      //  (b) the requester owns it, OR
+      //  (c) the requester is an admin.
+      allow read: if (resource != null
+                      && resource.metadata.published == 'true'
+                      && isSafeStoredDocument())
+                  || isOwner(userId)
+                  || isAdmin();
+
+      // A callable reserves the exact file name, owner, type, size, and expiry
+      // in Firestore. This makes per-account quotas enforceable and prevents
+      // clients from manufacturing unlimited object paths.
+      allow create: if isVerifiedOwner(userId)
+                    && hasValidDocumentUploadTicket(userId, fileName);
+
+      allow update: if isAdmin()
+                    && isAllowedDocumentSize()
+                    && isAllowedDocumentType()
+                    && request.resource.metadata.published in ['true', 'false'];
+
+      allow delete: if isAdmin()
+                    || (isOwner(userId) && resource.metadata.published != 'true');
+    }
+
+    // Event images: publicly readable (they are shown on the events list and
+    // event detail pages), admin-only for every mutation. Type and the 5 MB
+    // size cap are enforced here as well as client-side and in the callable
+    // that records the image, so a stolen path cannot be abused.
+    function isAllowedEventImageType() {
+      return request.resource.contentType.matches('image/jpeg|image/png|image/webp');
+    }
+    function isAllowedEventImageSize() {
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+    function isEventImageName(fileName) {
+      return fileName.matches('[a-z0-9]{6,40}(_thumb)?[.](jpg|jpeg|png|webp)');
+    }
+    function isEventId(eventId) {
+      return eventId.matches('[A-Za-z0-9_-]{1,128}');
+    }
+    function isSafeStoredEventImage(eventId, fileName) {
+      return isEventId(eventId)
+        && isEventImageName(fileName)
+        && resource != null
+        && resource.size <= 5 * 1024 * 1024
+        && resource.contentType.matches('image/jpeg|image/png|image/webp');
+    }
+
+    match /events/{eventId}/{fileName} {
+      // Public event media must still satisfy the same path, type, and size
+      // contract as a client upload. This prevents an Admin SDK mistake from
+      // accidentally publishing an arbitrary object under /events.
+      allow read: if isSafeStoredEventImage(eventId, fileName);
+      allow create, update: if isAdmin()
+                            && isEventId(eventId)
+                            && isEventImageName(fileName)
+                            && isAllowedEventImageSize()
+                            && isAllowedEventImageType();
+      allow delete: if isAdmin()
+                    && isEventId(eventId)
+                    && isEventImageName(fileName);
+    }
+
+    function isAllowedBackground() {
+      return request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/jpeg|image/png|image/webp');
+    }
+    function isSafeStoredBackground() {
+      return resource != null
+        && resource.size <= 10 * 1024 * 1024
+        && resource.contentType.matches('image/jpeg|image/png|image/webp');
+    }
+
+    match /backgrounds/{fileName} {
+      allow read: if isSafeStoredBackground();
+      allow create, update: if isAdmin() && isAllowedBackground();
+      // Deletes have no request.resource, so they must not share the upload
+      // validator used for create/update operations.
+      allow delete: if isAdmin();
+    }
+
+    match /siteContent/{fileName} {
+      allow read: if isStoredProfileImage(fileName);
+      allow create, update: if isAdmin()
+                            && isProfileImage(fileName)
+                            && isAllowedProfileImageSize()
+                            && isAllowedProfileImageType();
+      allow delete: if isAdmin() && isProfileImage(fileName);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,382 @@
+import { useState } from 'react';
+import { Users, Mail, Trash2, Edit2, Check, X, Droplets, Calendar, MapPin, HelpCircle, FileText, Leaf, MessageSquare, Download, ChevronDown, Home, Plus, User, PanelLeftClose, PanelLeft, Grid, List, ArrowLeft, Send, Upload, Clock, Eye, Flag, CheckCircle, XCircle, AlertTriangle, ThumbsUp, ThumbsDown, ChevronRight } from 'lucide-react';
+
+const initialUsers = [
+  { id: 1, name: 'Sarah Johnson', email: 'sarah@email.com', phone: '555-0101', date: '2024-03-15', mailingList: true },
+  { id: 2, name: 'Mike Chen', email: 'mike@email.com', phone: '555-0102', date: '2024-03-15', mailingList: false },
+];
+
+const initialEvents = [
+  { id: 1, date: '2024-04-20', title: 'Spring Creek Cleanup', location: 'Riverside Park', mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3153.0!2d-122.42!3d37.77!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zM!5e0!3m2!1sen!2sus!4v1', time: '9:00 AM', description: 'Annual spring cleanup!' },
+  { id: 2, date: '2024-05-11', title: 'Watershed Restoration', location: 'Mill Creek Trail', mapUrl: '', time: '10:00 AM', description: 'Restore native plants.' },
+  { id: 3, date: '2024-06-08', title: 'Summer Kickoff', location: 'Cedar Lake', mapUrl: '', time: '8:00 AM', description: 'Lakeside cleanup.' },
+];
+
+const faqs = [
+  { q: 'What should I bring?', a: 'We provide gloves and bags. Bring water and sunscreen.' },
+  { q: 'Age requirement?', a: 'Under 16 must be with an adult.' },
+  { q: 'What if it rains?', a: 'Check email morning-of for updates.' },
+];
+
+const initialForumPosts = [
+  { id: 1, author: 'RiverGuardian', authorId: 'u1', title: 'Tips for identifying invasive plants', replies: [
+    { id: 1, author: 'EcoVolunteer', authorId: 'u2', text: 'Great tips! The leaf guide is super helpful.', date: '2 days ago', flagged: false, upvotes: 5, downvotes: 0 },
+    { id: 2, author: 'WatershedWatcher', authorId: 'u3', text: 'Japanese knotweed is everywhere near Mill Creek. Look for bamboo-like stems.', date: '2 days ago', flagged: false, upvotes: 8, downvotes: 1 },
+    { id: 3, author: 'GreenThumb22', authorId: 'u4', text: 'Does anyone have photos of purple loosestrife?', date: '1 day ago', flagged: false, upvotes: 2, downvotes: 0 },
+  ], date: '3 days ago', content: 'Hey everyone! Tips for identifying invasive plants: check leaf patterns and growth clusters.', flagged: false, status: 'approved', upvotes: 12, downvotes: 1 },
+  { id: 2, author: 'EcoVolunteer', authorId: 'u2', title: 'Great turnout last Saturday!', replies: [
+    { id: 1, author: 'RiverGuardian', authorId: 'u1', text: 'It was amazing! We collected over 200 lbs of trash.', date: '4 days ago', flagged: false, upvotes: 15, downvotes: 0 },
+    { id: 2, author: 'CreekKeeper', authorId: 'u5', text: 'The pizza afterwards was a nice touch 🍕', date: '3 days ago', flagged: true, upvotes: 7, downvotes: 2 },
+  ], date: '5 days ago', content: 'Shoutout to everyone at Riverside Park cleanup! 40+ volunteers showed up!', flagged: false, status: 'approved', upvotes: 20, downvotes: 0 },
+  { id: 3, author: 'WatershedWatcher', authorId: 'u3', title: 'Question about waiver form', replies: [
+    { id: 1, author: 'AdminSarah', authorId: 'admin', text: 'Download from Documents section. Minors need parent signature.', date: '1 week ago', flagged: false, upvotes: 3, downvotes: 0 },
+  ], date: '1 week ago', content: 'The waiver link seems broken. Where can I download it?', flagged: false, status: 'approved', upvotes: 1, downvotes: 0 },
+  { id: 4, author: 'SpamBot', authorId: 'spam1', title: 'Check out this product!', replies: [], date: '1 hour ago', content: 'Buy now at spamlink.com!', flagged: true, status: 'pending', upvotes: 0, downvotes: 5 },
+];
+
+const documents = [
+  { name: 'Volunteer Waiver Form', type: 'PDF', size: '124 KB' },
+  { name: 'Safety Guidelines', type: 'PDF', size: '89 KB' },
+  { name: 'Plant ID Guide', type: 'PDF', size: '2.1 MB' },
+];
+
+const initialUserDocs = [
+  { id: 1, userName: 'Sarah Johnson', userEmail: 'sarah@email.com', name: 'Waiver_Sarah.pdf', type: 'PDF', size: '156 KB', uploadDate: '2024-03-15', status: 'approved' },
+  { id: 2, userName: 'Mike Chen', userEmail: 'mike@email.com', name: 'Waiver_Mike.pdf', type: 'PDF', size: '142 KB', uploadDate: '2024-03-16', status: 'pending' },
+];
+
+export default function App() {
+  const [view, setView] = useState('user');
+  const [page, setPage] = useState('home');
+  const [adminTab, setAdminTab] = useState('volunteers');
+  const [users, setUsers] = useState(initialUsers);
+  const [events, setEvents] = useState(initialEvents);
+  const [forumPosts, setForumPosts] = useState(initialForumPosts);
+  const [allUserDocs, setAllUserDocs] = useState(initialUserDocs);
+  const [mailingList, setMailingList] = useState(['sarah@email.com']);
+  const [form, setForm] = useState({ name: '', email: '', phone: '' });
+  const [mailForm, setMailForm] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [mailSubmitted, setMailSubmitted] = useState(false);
+  const [openFaq, setOpenFaq] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authForm, setAuthForm] = useState({ name: '', email: '', password: '' });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [calendarView, setCalendarView] = useState('list');
+  const [rsvps, setRsvps] = useState([]);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date(2024, 3, 1));
+  const [showRsvpModal, setShowRsvpModal] = useState(false);
+  const [rsvpForm, setRsvpForm] = useState({ eventId: null, name: '', email: '', comments: '' });
+  const [userDocs, setUserDocs] = useState([]);
+  const [selectedEventMap, setSelectedEventMap] = useState(null);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [eventForm, setEventForm] = useState({ title: '', date: '', time: '', location: '', mapUrl: '', description: '' });
+  const [editingEventId, setEditingEventId] = useState(null);
+  const [adminViewThread, setAdminViewThread] = useState(null);
+  const [adminViewUser, setAdminViewUser] = useState(null);
+  const [userVotes, setUserVotes] = useState({});
+  const [replyText, setReplyText] = useState('');
+
+  // Handlers
+  const handleSignup = (e) => { e.preventDefault(); setUsers([...users, { ...form, id: Date.now(), date: new Date().toISOString().split('T')[0] }]); setForm({ name: '', email: '', phone: '' }); setSubmitted(true); setTimeout(() => setSubmitted(false), 3000); };
+  const handleMailingList = (e) => { e.preventDefault(); if (!mailingList.includes(mailForm)) setMailingList([...mailingList, mailForm]); setMailForm(''); setMailSubmitted(true); setTimeout(() => setMailSubmitted(false), 3000); };
+  const handleCreateAccount = (e) => { e.preventDefault(); setCurrentUser({ id: 'user_' + Date.now(), name: authForm.name, email: authForm.email }); setShowAuthModal(false); setAuthForm({ name: '', email: '', password: '' }); };
+  const handleRsvpSubmit = (e) => { e.preventDefault(); setRsvps([...rsvps, { ...rsvpForm, id: Date.now() }]); setShowRsvpModal(false); setRsvpForm({ eventId: null, name: '', email: '', comments: '' }); };
+  const toggleRsvp = (eventId) => { const existing = rsvps.find(r => r.eventId === eventId); if (existing) setRsvps(rsvps.filter(r => r.eventId !== eventId)); else { setRsvpForm({ eventId, name: '', email: '', comments: '' }); setShowRsvpModal(true); } };
+  const handleFileUpload = (e) => { const file = e.target.files[0]; if (file) setUserDocs([...userDocs, { name: file.name, type: 'PDF', size: `${(file.size/1024).toFixed(0)} KB`, uploadDate: new Date().toLocaleDateString() }]); };
+  
+  const handleVote = (postId, replyId, type) => {
+    if (!currentUser) { setShowAuthModal(true); return; }
+    const key = `${postId}-${replyId || 'post'}-${type}`;
+    const oppositeKey = `${postId}-${replyId || 'post'}-${type === 'up' ? 'down' : 'up'}`;
+    const hasVoted = userVotes[key];
+    const hasOpposite = userVotes[oppositeKey];
+    
+    setForumPosts(forumPosts.map(p => {
+      if (p.id === postId) {
+        if (replyId) {
+          return { ...p, replies: p.replies.map(r => {
+            if (r.id === replyId) {
+              let up = r.upvotes, down = r.downvotes;
+              if (hasVoted) { type === 'up' ? up-- : down--; }
+              else { type === 'up' ? up++ : down++; if (hasOpposite) { type === 'up' ? down-- : up--; } }
+              return { ...r, upvotes: up, downvotes: down };
+            } return r;
+          })};
+        } else {
+          let up = p.upvotes, down = p.downvotes;
+          if (hasVoted) { type === 'up' ? up-- : down--; }
+          else { type === 'up' ? up++ : down++; if (hasOpposite) { type === 'up' ? down-- : up--; } }
+          return { ...p, upvotes: up, downvotes: down };
+        }
+      } return p;
+    }));
+    
+    const newVotes = { ...userVotes };
+    if (hasVoted) delete newVotes[key];
+    else { newVotes[key] = true; if (hasOpposite) delete newVotes[oppositeKey]; }
+    setUserVotes(newVotes);
+  };
+
+  const handleReply = (postId) => {
+    if (!replyText.trim() || !currentUser) return;
+    setForumPosts(forumPosts.map(p => p.id === postId ? { ...p, replies: [...p.replies, { id: Date.now(), author: currentUser.name, authorId: currentUser.id, text: replyText, date: 'Just now', flagged: false, upvotes: 0, downvotes: 0 }] } : p));
+    setReplyText('');
+  };
+
+  const deleteUser = (id) => setUsers(users.filter(u => u.id !== id));
+  const startEdit = (user) => { setEditingId(user.id); setEditForm(user); };
+  const saveEdit = () => { setUsers(users.map(u => u.id === editingId ? editForm : u)); setEditingId(null); };
+  const removeMail = (email) => setMailingList(mailingList.filter(e => e !== email));
+  const isRsvped = (eventId) => rsvps.some(r => r.eventId === eventId);
+  const openNewEvent = () => { setEventForm({ title: '', date: '', time: '', location: '', mapUrl: '', description: '' }); setEditingEventId(null); setShowEventModal(true); };
+  const openEditEvent = (evt) => { setEventForm(evt); setEditingEventId(evt.id); setShowEventModal(true); };
+  const saveEvent = (e) => { e.preventDefault(); if (editingEventId) setEvents(events.map(ev => ev.id === editingEventId ? { ...eventForm, id: editingEventId } : ev)); else setEvents([...events, { ...eventForm, id: Date.now() }]); setShowEventModal(false); };
+  const deleteEvent = (id) => setEvents(events.filter(e => e.id !== id));
+  const approveDoc = (id) => setAllUserDocs(allUserDocs.map(d => d.id === id ? { ...d, status: 'approved' } : d));
+  const rejectDoc = (id) => setAllUserDocs(allUserDocs.map(d => d.id === id ? { ...d, status: 'rejected' } : d));
+  const deleteDoc = (id) => setAllUserDocs(allUserDocs.filter(d => d.id !== id));
+  const approvePost = (id) => setForumPosts(forumPosts.map(p => p.id === id ? { ...p, status: 'approved', flagged: false } : p));
+  const deletePost = (id) => { setForumPosts(forumPosts.filter(p => p.id !== id)); setAdminViewThread(null); };
+  const deleteReply = (postId, replyId) => setForumPosts(forumPosts.map(p => p.id === postId ? { ...p, replies: p.replies.filter(r => r.id !== replyId) } : p));
+  const unflagReply = (postId, replyId) => setForumPosts(forumPosts.map(p => p.id === postId ? { ...p, replies: p.replies.map(r => r.id === replyId ? { ...r, flagged: false } : r) } : p));
+
+  const getAllUserComments = (authorId) => {
+    const comments = [];
+    forumPosts.forEach(p => {
+      if (p.authorId === authorId) comments.push({ type: 'post', ...p });
+      p.replies.filter(r => r.authorId === authorId).forEach(r => comments.push({ type: 'reply', postId: p.id, postTitle: p.title, ...r }));
+    });
+    return comments;
+  };
+
+  const navItems = [
+    { id: 'home', icon: Home, label: 'Home' },
+    { id: 'calendar', icon: Calendar, label: 'Events' },
+    { id: 'forum', icon: MessageSquare, label: 'Forum' },
+    { id: 'documents', icon: FileText, label: 'Documents' },
+    { id: 'plants', icon: Leaf, label: 'Plant ID' },
+    ...(currentUser ? [{ id: 'profile', icon: User, label: 'My Profile' }] : []),
+  ];
+
+  const adminTabs = [
+    { id: 'volunteers', icon: Users, label: 'Volunteers' },
+    { id: 'events', icon: Calendar, label: 'Events' },
+    { id: 'documents', icon: FileText, label: 'Documents' },
+    { id: 'forum', icon: MessageSquare, label: 'Forum' },
+    { id: 'mailing', icon: Mail, label: 'Mailing' },
+  ];
+
+  const VoteButtons = ({ postId, replyId, upvotes, downvotes }) => (
+    <div className="flex items-center gap-1 text-sm">
+      <button onClick={(e) => { e.stopPropagation(); handleVote(postId, replyId, 'up'); }} className={`p-1 rounded hover:bg-emerald-100 ${userVotes[`${postId}-${replyId || 'post'}-up`] ? 'text-emerald-600' : 'text-gray-400'}`}><ThumbsUp size={14} /></button>
+      <span className={`min-w-6 text-center ${upvotes - downvotes > 0 ? 'text-emerald-600' : upvotes - downvotes < 0 ? 'text-red-500' : 'text-gray-400'}`}>{upvotes - downvotes}</span>
+      <button onClick={(e) => { e.stopPropagation(); handleVote(postId, replyId, 'down'); }} className={`p-1 rounded hover:bg-red-100 ${userVotes[`${postId}-${replyId || 'post'}-down`] ? 'text-red-500' : 'text-gray-400'}`}><ThumbsDown size={14} /></button>
+    </div>
+  );
+
+  const RsvpModal = () => (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+      <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-gray-800">RSVP</h2><button onClick={() => setShowRsvpModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button></div>
+      <form onSubmit={handleRsvpSubmit} className="space-y-4">
+        <input type="text" placeholder="Name" required value={rsvpForm.name} onChange={e => setRsvpForm({...rsvpForm, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" />
+        <input type="email" placeholder="Email" required value={rsvpForm.email} onChange={e => setRsvpForm({...rsvpForm, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" />
+        <textarea placeholder="Comments (optional)" value={rsvpForm.comments} onChange={e => setRsvpForm({...rsvpForm, comments: e.target.value})} rows={2} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" />
+        <button type="submit" className="w-full bg-teal-500 text-white py-3 rounded-xl font-semibold hover:bg-teal-600">Confirm</button>
+      </form>
+    </div></div>
+  );
+
+  const AuthModal = () => (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+      <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-gray-800">Create Account</h2><button onClick={() => setShowAuthModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button></div>
+      <form onSubmit={handleCreateAccount} className="space-y-4">
+        <input type="text" placeholder="Name" required value={authForm.name} onChange={e => setAuthForm({...authForm, name: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" />
+        <input type="email" placeholder="Email" required value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" />
+        <input type="password" placeholder="Password" required value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" />
+        <button type="submit" className="w-full bg-teal-500 text-white py-3 rounded-xl font-semibold hover:bg-teal-600">Create Account</button>
+      </form>
+    </div></div>
+  );
+
+  const EventMapModal = () => selectedEventMap && (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl p-6 max-w-4xl w-full shadow-2xl">
+      <div className="flex justify-between items-center mb-4"><div><h2 className="text-2xl font-bold text-gray-800">{selectedEventMap.title}</h2><p className="text-gray-500 flex items-center gap-1"><MapPin size={14} />{selectedEventMap.location}</p></div><button onClick={() => setSelectedEventMap(null)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button></div>
+      <iframe src={selectedEventMap.mapUrl} width="100%" height="400" style={{border:0}} allowFullScreen loading="lazy" className="rounded-xl"></iframe>
+    </div></div>
+  );
+
+  const EventFormModal = () => showEventModal && (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto"><div className="bg-white rounded-2xl p-8 max-w-2xl w-full shadow-2xl my-8">
+      <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-gray-800">{editingEventId ? 'Edit Event' : 'New Event'}</h2><button onClick={() => setShowEventModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button></div>
+      <form onSubmit={saveEvent} className="space-y-4">
+        <input type="text" placeholder="Title" required value={eventForm.title} onChange={e => setEventForm({...eventForm, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" />
+        <div className="grid grid-cols-2 gap-4"><input type="date" required value={eventForm.date} onChange={e => setEventForm({...eventForm, date: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" /><input type="text" placeholder="Time" required value={eventForm.time} onChange={e => setEventForm({...eventForm, time: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" /></div>
+        <input type="text" placeholder="Location" required value={eventForm.location} onChange={e => setEventForm({...eventForm, location: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" />
+        <input type="url" placeholder="Google Maps Embed URL" value={eventForm.mapUrl} onChange={e => setEventForm({...eventForm, mapUrl: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" />
+        <textarea placeholder="Description" value={eventForm.description} onChange={e => setEventForm({...eventForm, description: e.target.value})} rows={2} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 outline-none" />
+        {eventForm.mapUrl && <iframe src={eventForm.mapUrl} width="100%" height="150" style={{border:0}} loading="lazy" className="rounded-xl"></iframe>}
+        <div className="flex gap-3"><button type="button" onClick={() => setShowEventModal(false)} className="flex-1 py-3 border border-gray-200 rounded-xl hover:bg-gray-50">Cancel</button><button type="submit" className="flex-1 bg-teal-500 text-white py-3 rounded-xl font-semibold hover:bg-teal-600">Save</button></div>
+      </form>
+    </div></div>
+  );
+
+  const HomePage = () => (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-teal-600 via-cyan-600 to-emerald-600 text-white rounded-2xl p-8 text-center">
+        <Droplets size={40} className="mx-auto mb-3 opacity-80" /><h1 className="text-3xl font-bold mb-2">Creek & Watershed Clean-Up</h1><p className="text-teal-100">Protecting our local waterways together</p>
+      </div>
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"><h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2"><MapPin className="text-teal-600" size={24} />Service Area</h2><iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d50463.4!2d-122.47!3d37.76!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80859a6d00690021%3A0x4a501367f076adff!2sSan%20Francisco!5e0!3m2!1sen!2sus!4v1" width="100%" height="300" style={{border:0}} loading="lazy" className="rounded-xl"></iframe></div>
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"><h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><Users className="text-teal-600" size={24} />Volunteer</h2>{submitted ? <div className="bg-emerald-50 text-emerald-700 p-4 rounded-xl flex items-center gap-2"><Check size={20} />Thanks!</div> : <form onSubmit={handleSignup} className="space-y-3"><input type="text" placeholder="Name" required value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-teal-500 outline-none" /><input type="email" placeholder="Email" required value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-teal-500 outline-none" /><button type="submit" className="w-full bg-teal-500 text-white py-2 rounded-lg font-medium hover:bg-teal-600">Sign Up</button></form>}</div>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"><h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><Mail className="text-emerald-600" size={24} />Newsletter</h2>{mailSubmitted ? <div className="bg-emerald-50 text-emerald-700 p-4 rounded-xl flex items-center gap-2"><Check size={20} />Subscribed!</div> : <form onSubmit={handleMailingList} className="space-y-3"><input type="email" placeholder="Email" required value={mailForm} onChange={e => setMailForm(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-emerald-500 outline-none" /><button type="submit" className="w-full bg-emerald-500 text-white py-2 rounded-lg font-medium hover:bg-emerald-600">Subscribe</button></form>}</div>
+      </div>
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"><h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><HelpCircle className="text-teal-600" size={24} />FAQ</h2><div className="space-y-2">{faqs.map((f,i) => <div key={i} className="border border-gray-100 rounded-xl"><button onClick={() => setOpenFaq(openFaq===i?null:i)} className="w-full px-4 py-3 flex justify-between items-center hover:bg-gray-50"><span className="font-medium text-gray-700">{f.q}</span><ChevronDown size={18} className={`text-gray-400 transition ${openFaq===i?'rotate-180':''}`}/></button>{openFaq===i && <div className="px-4 py-3 bg-gray-50 text-gray-600 border-t">{f.a}</div>}</div>)}</div></div>
+    </div>
+  );
+
+  const CalendarPage = () => (
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Calendar className="text-teal-600" />Events</h2></div>
+      <div className="space-y-4">{events.map(evt => <div key={evt.id} className="border border-gray-100 rounded-xl p-4 hover:border-teal-200 flex items-center gap-4"><div className="bg-gradient-to-br from-teal-500 to-cyan-500 text-white rounded-xl p-3 text-center min-w-14"><div className="text-xs">{new Date(evt.date).toLocaleDateString('en-US',{month:'short'})}</div><div className="text-xl font-bold">{new Date(evt.date).getDate()}</div></div><div className="flex-1"><h3 className="font-semibold text-gray-800">{evt.title}</h3><p className="text-gray-500 text-sm flex items-center gap-1"><MapPin size={12}/>{evt.location} • {evt.time}</p></div>{evt.mapUrl && <button onClick={() => setSelectedEventMap(evt)} className="px-3 py-2 text-teal-600 hover:bg-teal-50 rounded-lg text-sm"><MapPin size={16}/></button>}<button onClick={() => toggleRsvp(evt.id)} className={`px-4 py-2 rounded-lg text-sm font-medium ${isRsvped(evt.id)?'bg-emerald-500 text-white':'bg-teal-100 text-teal-700 hover:bg-teal-200'}`}>{isRsvped(evt.id)?'Going!':'RSVP'}</button></div>)}</div>
+    </div>
+  );
+
+  const ForumPage = () => {
+    const approved = forumPosts.filter(p => p.status === 'approved');
+    return (
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      {selectedPost ? (<div>
+        <button onClick={() => setSelectedPost(null)} className="flex items-center gap-2 text-teal-600 hover:text-teal-700 mb-4"><ArrowLeft size={18}/>Back</button>
+        <div className="border-b pb-4 mb-4"><h2 className="text-2xl font-bold text-gray-800 mb-2">{selectedPost.title}</h2><div className="flex items-center gap-4 text-sm text-gray-500"><span className="flex items-center gap-1"><User size={14}/>{selectedPost.author}</span><span>{selectedPost.date}</span><VoteButtons postId={selectedPost.id} upvotes={selectedPost.upvotes} downvotes={selectedPost.downvotes}/></div></div>
+        <p className="text-gray-700 mb-6">{selectedPost.content}</p>
+        <h3 className="font-semibold text-gray-800 mb-4">{selectedPost.replies.length} Replies</h3>
+        <div className="space-y-4 mb-6">{selectedPost.replies.map(r => <div key={r.id} className="flex gap-3"><div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600"><User size={18}/></div><div className="flex-1 bg-gray-50 rounded-xl p-4"><div className="flex items-center justify-between mb-1"><div className="flex items-center gap-2"><span className="font-medium text-gray-800">{r.author}</span><span className="text-xs text-gray-400">{r.date}</span></div><VoteButtons postId={selectedPost.id} replyId={r.id} upvotes={r.upvotes} downvotes={r.downvotes}/></div><p className="text-gray-600">{r.text}</p></div></div>)}</div>
+        {currentUser ? <div className="flex gap-3"><div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600"><User size={18}/></div><div className="flex-1 flex gap-2"><input type="text" placeholder="Reply..." value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleReply(selectedPost.id)} className="flex-1 px-4 py-2 border rounded-xl focus:border-teal-500 outline-none"/><button onClick={() => handleReply(selectedPost.id)} className="px-4 py-2 bg-teal-500 text-white rounded-xl hover:bg-teal-600"><Send size={18}/></button></div></div> : <button onClick={() => setShowAuthModal(true)} className="w-full py-3 border-2 border-dashed rounded-xl text-gray-500 hover:border-teal-300">Sign in to reply</button>}
+      </div>) : (<div>
+        <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><MessageSquare className="text-teal-600"/>Forum</h2><button onClick={() => currentUser ? null : setShowAuthModal(true)} className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg text-sm font-medium hover:bg-teal-600"><Plus size={18}/>New Post</button></div>
+        {currentUser && <div className="mb-4 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm">Logged in as {currentUser.name}</div>}
+        <div className="space-y-3">{approved.map(p => <div key={p.id} onClick={() => setSelectedPost(p)} className="p-4 border border-gray-100 rounded-xl hover:border-teal-200 hover:bg-teal-50/30 cursor-pointer"><div className="flex justify-between items-start"><div><h3 className="font-semibold text-gray-800 mb-1">{p.title}</h3><div className="flex items-center gap-4 text-sm text-gray-500"><span className="flex items-center gap-1"><User size={14}/>{p.author}</span><span>{p.replies.length} replies</span></div></div><VoteButtons postId={p.id} upvotes={p.upvotes} downvotes={p.downvotes}/></div></div>)}</div>
+      </div>)}
+    </div>
+  )};
+
+  const ProfilePage = () => {
+    if (!currentUser) return null;
+    const myComments = getAllUserComments(currentUser.id);
+    return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center gap-4 mb-6"><div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center text-teal-600"><User size={32}/></div><div><h2 className="text-2xl font-bold text-gray-800">{currentUser.name}</h2><p className="text-gray-500">{currentUser.email}</p></div></div>
+        <div className="grid grid-cols-3 gap-4 text-center"><div className="bg-gray-50 rounded-xl p-4"><div className="text-2xl font-bold text-teal-600">{myComments.length}</div><div className="text-sm text-gray-500">Comments</div></div><div className="bg-gray-50 rounded-xl p-4"><div className="text-2xl font-bold text-emerald-600">{rsvps.length}</div><div className="text-sm text-gray-500">RSVPs</div></div><div className="bg-gray-50 rounded-xl p-4"><div className="text-2xl font-bold text-cyan-600">{userDocs.length}</div><div className="text-sm text-gray-500">Documents</div></div></div>
+      </div>
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">My Comments</h3>
+        {myComments.length === 0 ? <p className="text-gray-400 text-center py-8">No comments yet</p> : <div className="space-y-3">{myComments.map((c,i) => <div key={i} className="p-4 border border-gray-100 rounded-xl"><div className="flex items-center gap-2 text-sm text-gray-500 mb-2">{c.type === 'post' ? <span className="bg-teal-100 text-teal-700 px-2 py-0.5 rounded text-xs">Post</span> : <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">Reply to "{c.postTitle}"</span>}<span>{c.date}</span><div className="ml-auto flex items-center gap-2"><ThumbsUp size={12} className="text-emerald-500"/>{c.upvotes}<ThumbsDown size={12} className="text-red-400"/>{c.downvotes}</div></div><p className="text-gray-700">{c.type === 'post' ? c.content : c.text}</p></div>)}</div>}
+      </div>
+    </div>
+  )};
+
+  const DocumentsPage = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"><h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><FileText className="text-teal-600"/>Documents</h2><div className="space-y-3">{documents.map((d,i) => <div key={i} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:border-teal-200"><div className="flex items-center gap-3"><span className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs">{d.type}</span><span className="font-medium text-gray-700">{d.name}</span><span className="text-gray-400 text-sm">{d.size}</span></div><button className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Download size={18}/></button></div>)}</div></div>
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Upload className="text-emerald-600"/>My Uploads</h2><label className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm cursor-pointer hover:bg-emerald-600"><Upload size={16}/>Upload<input type="file" onChange={handleFileUpload} className="hidden"/></label></div>{userDocs.length ? <div className="space-y-3">{userDocs.map((d,i) => <div key={i} className="flex items-center justify-between p-4 border border-emerald-100 bg-emerald-50/30 rounded-xl"><div className="flex items-center gap-3"><span className="bg-emerald-100 text-emerald-600 px-2 py-1 rounded text-xs">{d.type}</span><span className="text-gray-700">{d.name}</span><span className="text-gray-400 text-sm">{d.uploadDate}</span></div><button onClick={() => setUserDocs(userDocs.filter((_,idx) => idx !== i))} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={16}/></button></div>)}</div> : <div className="text-center py-8 border-2 border-dashed rounded-xl text-gray-400">No uploads yet</div>}</div>
+    </div>
+  );
+
+  const PlantsPage = () => (
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"><h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><Leaf className="text-emerald-600"/>Plant ID Guide</h2><p className="text-gray-600 mb-6">Learn to identify native and invasive species.</p><div className="grid md:grid-cols-2 gap-4"><div className="p-4 border border-emerald-200 rounded-xl bg-emerald-50"><h3 className="font-semibold text-emerald-800 mb-2">🌿 Native</h3><p className="text-emerald-700 text-sm">Willows, sedges, rushes supporting wildlife.</p></div><div className="p-4 border border-orange-200 rounded-xl bg-orange-50"><h3 className="font-semibold text-orange-800 mb-2">⚠️ Invasive</h3><p className="text-orange-700 text-sm">Knotweed, loosestrife crowding native plants.</p></div></div></div>
+  );
+
+  const UserView = () => (
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-emerald-50 flex">
+      <button onClick={() => setSidebarOpen(!sidebarOpen)} className={`fixed top-4 ${sidebarOpen ? 'left-52' : 'left-4'} z-50 bg-teal-600 hover:bg-teal-700 text-white p-2.5 rounded-xl shadow-lg transition-all duration-300 flex items-center gap-2`}>{sidebarOpen ? <PanelLeftClose size={20}/> : <><PanelLeft size={20}/><span className="text-sm pr-1">Menu</span></>}</button>
+      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} bg-white border-r flex flex-col transition-all duration-300 overflow-hidden`}><div className="flex items-center gap-2 p-4 pt-6 mb-4"><Droplets className="text-teal-600" size={28}/><span className="font-bold text-gray-800 whitespace-nowrap">WatershedCrew</span></div><nav className="space-y-1 flex-1 px-4">{navItems.map(n => <button key={n.id} onClick={() => { setPage(n.id); setSelectedPost(null); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left whitespace-nowrap ${page === n.id ? 'bg-teal-100 text-teal-700' : 'text-gray-600 hover:bg-gray-100'}`}><n.icon size={20}/>{n.label}</button>)}</nav>{currentUser ? <div className="border-t p-4"><div className="flex items-center gap-2 text-sm text-gray-600"><div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center text-teal-600"><User size={16}/></div>{currentUser.name}</div></div> : <button onClick={() => setShowAuthModal(true)} className="m-4 text-sm text-teal-600 hover:text-teal-700 text-left">Sign In</button>}</div>
+      <div className="flex-1 p-8 overflow-auto"><div className={`transition-all ${sidebarOpen ? '' : 'ml-16'}`}>{page === 'home' && <HomePage/>}{page === 'calendar' && <CalendarPage/>}{page === 'forum' && <ForumPage/>}{page === 'documents' && <DocumentsPage/>}{page === 'plants' && <PlantsPage/>}{page === 'profile' && <ProfilePage/>}</div></div>
+      {showAuthModal && <AuthModal/>}{showRsvpModal && <RsvpModal/>}{selectedEventMap && <EventMapModal/>}
+    </div>
+  );
+
+  // Admin
+  const AdminVolunteers = () => (
+    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div className="px-6 py-4 border-b flex items-center justify-between"><div className="flex items-center gap-3"><Users className="text-teal-600"/><h2 className="text-xl font-bold text-gray-800">Volunteers ({users.length})</h2></div></div>
+      <table className="w-full"><thead className="bg-gray-50 text-gray-600 text-sm"><tr><th className="px-6 py-3 text-left">Name</th><th className="px-6 py-3 text-left">Email</th><th className="px-6 py-3 text-left">Phone</th><th className="px-6 py-3 text-left">Date</th><th className="px-6 py-3 text-right">Actions</th></tr></thead><tbody className="divide-y">{users.map(u => <tr key={u.id} className="hover:bg-gray-50">{editingId === u.id ? <><td className="px-6 py-3"><input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="border rounded px-2 py-1 w-full"/></td><td className="px-6 py-3"><input value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="border rounded px-2 py-1 w-full"/></td><td className="px-6 py-3"><input value={editForm.phone||''} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="border rounded px-2 py-1 w-full"/></td><td className="px-6 py-3 text-gray-500">{u.date}</td><td className="px-6 py-3 text-right space-x-2"><button onClick={saveEdit} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg"><Check size={18}/></button><button onClick={() => setEditingId(null)} className="text-gray-400 hover:bg-gray-100 p-2 rounded-lg"><X size={18}/></button></td></> : <><td className="px-6 py-3 font-medium text-gray-800">{u.name}</td><td className="px-6 py-3 text-gray-600">{u.email}</td><td className="px-6 py-3 text-gray-600">{u.phone || '—'}</td><td className="px-6 py-3 text-gray-500">{u.date}</td><td className="px-6 py-3 text-right space-x-2"><button onClick={() => startEdit(u)} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Edit2 size={18}/></button><button onClick={() => deleteUser(u.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={18}/></button></td></>}</tr>)}</tbody></table>
+    </div>
+  );
+
+  const AdminEvents = () => (
+    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div className="px-6 py-4 border-b flex items-center justify-between"><div className="flex items-center gap-3"><Calendar className="text-teal-600"/><h2 className="text-xl font-bold text-gray-800">Events</h2></div><button onClick={openNewEvent} className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg text-sm hover:bg-teal-600"><Plus size={18}/>New</button></div>
+      <div className="p-6 space-y-4">{events.map(e => <div key={e.id} className="border rounded-xl p-4 hover:border-teal-200 flex items-start justify-between"><div className="flex gap-4"><div className="bg-gradient-to-br from-teal-500 to-cyan-500 text-white rounded-xl p-3 text-center min-w-14"><div className="text-xs">{new Date(e.date).toLocaleDateString('en-US',{month:'short'})}</div><div className="text-xl font-bold">{new Date(e.date).getDate()}</div></div><div><h3 className="font-semibold text-gray-800">{e.title}</h3><p className="text-gray-500 text-sm">{e.location} • {e.time}</p><p className="text-gray-400 text-sm">{e.description}</p>{e.mapUrl && <span className="text-teal-600 text-xs flex items-center gap-1 mt-1"><Check size={12}/>Map set</span>}</div></div><div className="flex gap-2"><button onClick={() => openEditEvent(e)} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Edit2 size={18}/></button><button onClick={() => deleteEvent(e.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={18}/></button></div></div>)}</div>
+    </div>
+  );
+
+  const AdminDocuments = () => {
+    const pending = allUserDocs.filter(d => d.status === 'pending');
+    return (
+    <div className="space-y-6">
+      {pending.length > 0 && <div className="bg-white rounded-2xl shadow-lg overflow-hidden"><div className="px-6 py-4 border-b bg-orange-50 flex items-center gap-3"><AlertTriangle className="text-orange-500"/><h2 className="text-xl font-bold text-orange-800">Pending ({pending.length})</h2></div><div className="p-4 space-y-3">{pending.map(d => <div key={d.id} className="flex items-center justify-between p-4 border border-orange-200 bg-orange-50/50 rounded-xl"><div className="flex items-center gap-4"><div><p className="font-medium text-gray-800">{d.userName}</p><p className="text-gray-500 text-sm">{d.userEmail}</p></div><div className="flex items-center gap-2"><span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs">{d.type}</span><span className="text-gray-700">{d.name}</span></div></div><div className="flex gap-2"><button onClick={() => approveDoc(d.id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg"><CheckCircle size={18}/></button><button onClick={() => rejectDoc(d.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><XCircle size={18}/></button></div></div>)}</div></div>}
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden"><div className="px-6 py-4 border-b flex items-center gap-3"><FileText className="text-teal-600"/><h2 className="text-xl font-bold text-gray-800">All Documents</h2></div><table className="w-full"><thead className="bg-gray-50 text-gray-600 text-sm"><tr><th className="px-6 py-3 text-left">User</th><th className="px-6 py-3 text-left">Document</th><th className="px-6 py-3 text-left">Status</th><th className="px-6 py-3 text-right">Actions</th></tr></thead><tbody className="divide-y">{allUserDocs.map(d => <tr key={d.id} className="hover:bg-gray-50"><td className="px-6 py-3"><p className="font-medium">{d.userName}</p><p className="text-gray-500 text-sm">{d.userEmail}</p></td><td className="px-6 py-3"><span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs mr-2">{d.type}</span>{d.name}</td><td className="px-6 py-3"><span className={`px-2 py-1 rounded-full text-xs ${d.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : d.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{d.status}</span></td><td className="px-6 py-3 text-right space-x-1"><button className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Download size={16}/></button><button onClick={() => deleteDoc(d.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={16}/></button></td></tr>)}</tbody></table></div>
+    </div>
+  )};
+
+  const AdminForum = () => {
+    const flaggedPosts = forumPosts.filter(p => p.flagged || p.status === 'pending');
+    const flaggedReplies = forumPosts.flatMap(p => p.replies.filter(r => r.flagged).map(r => ({ ...r, postId: p.id, postTitle: p.title })));
+    const allAuthors = [...new Set(forumPosts.flatMap(p => [{ id: p.authorId, name: p.author }, ...p.replies.map(r => ({ id: r.authorId, name: r.author }))]).map(a => JSON.stringify(a)))].map(a => JSON.parse(a));
+
+    if (adminViewUser) {
+      const userComments = getAllUserComments(adminViewUser.id);
+      return (
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="px-6 py-4 border-b flex items-center gap-3"><button onClick={() => setAdminViewUser(null)} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><ArrowLeft size={18}/></button><User className="text-teal-600"/><h2 className="text-xl font-bold text-gray-800">{adminViewUser.name}'s Activity</h2></div>
+          <div className="p-6 space-y-3">{userComments.length === 0 ? <p className="text-gray-400 text-center py-8">No activity</p> : userComments.map((c,i) => <div key={i} className="p-4 border rounded-xl"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2 text-sm">{c.type === 'post' ? <span className="bg-teal-100 text-teal-700 px-2 py-0.5 rounded text-xs">Post: {c.title}</span> : <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">Reply on "{c.postTitle}"</span>}<span className="text-gray-400">{c.date}</span></div><div className="flex items-center gap-3"><div className="flex items-center gap-1 text-sm"><ThumbsUp size={12} className="text-emerald-500"/>{c.upvotes}<ThumbsDown size={12} className="text-red-400 ml-2"/>{c.downvotes}</div><button onClick={() => c.type === 'post' ? deletePost(c.id) : deleteReply(c.postId, c.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button></div></div><p className="text-gray-700">{c.type === 'post' ? c.content : c.text}</p></div>)}</div>
+        </div>
+      );
+    }
+
+    if (adminViewThread) {
+      return (
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="px-6 py-4 border-b flex items-center gap-3"><button onClick={() => setAdminViewThread(null)} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><ArrowLeft size={18}/></button><MessageSquare className="text-teal-600"/><h2 className="text-xl font-bold text-gray-800">{adminViewThread.title}</h2></div>
+          <div className="p-6">
+            <div className="p-4 border rounded-xl mb-4 bg-teal-50/30"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2 text-sm"><span className="bg-teal-100 text-teal-700 px-2 py-0.5 rounded text-xs">Original Post</span><button onClick={() => setAdminViewUser({ id: adminViewThread.authorId, name: adminViewThread.author })} className="text-teal-600 hover:underline">{adminViewThread.author}</button><span className="text-gray-400">{adminViewThread.date}</span></div><div className="flex items-center gap-2"><span className={`px-2 py-0.5 rounded text-xs ${adminViewThread.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>{adminViewThread.status}</span>{adminViewThread.status !== 'approved' && <button onClick={() => approvePost(adminViewThread.id)} className="text-emerald-600 hover:bg-emerald-50 p-1 rounded"><CheckCircle size={16}/></button>}<button onClick={() => deletePost(adminViewThread.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button></div></div><p className="text-gray-700">{adminViewThread.content}</p><div className="flex items-center gap-2 mt-2 text-sm text-gray-500"><ThumbsUp size={12}/>{adminViewThread.upvotes}<ThumbsDown size={12} className="ml-2"/>{adminViewThread.downvotes}</div></div>
+            <h3 className="font-semibold text-gray-800 mb-3">{adminViewThread.replies.length} Replies</h3>
+            <div className="space-y-3">{adminViewThread.replies.map(r => <div key={r.id} className={`p-4 border rounded-xl ${r.flagged ? 'border-red-200 bg-red-50/30' : ''}`}><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2 text-sm"><button onClick={() => setAdminViewUser({ id: r.authorId, name: r.author })} className="font-medium text-teal-600 hover:underline">{r.author}</button><span className="text-gray-400">{r.date}</span>{r.flagged && <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs">Flagged</span>}</div><div className="flex items-center gap-2">{r.flagged && <button onClick={() => unflagReply(adminViewThread.id, r.id)} className="text-emerald-600 hover:bg-emerald-50 p-1 rounded"><CheckCircle size={16}/></button>}<button onClick={() => deleteReply(adminViewThread.id, r.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button></div></div><p className="text-gray-700">{r.text}</p><div className="flex items-center gap-2 mt-2 text-sm text-gray-500"><ThumbsUp size={12}/>{r.upvotes}<ThumbsDown size={12} className="ml-2"/>{r.downvotes}</div></div>)}</div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+    <div className="space-y-6">
+      {(flaggedPosts.length > 0 || flaggedReplies.length > 0) && <div className="bg-white rounded-2xl shadow-lg overflow-hidden"><div className="px-6 py-4 border-b bg-red-50 flex items-center gap-3"><Flag className="text-red-500"/><h2 className="text-xl font-bold text-red-800">Flagged ({flaggedPosts.length + flaggedReplies.length})</h2></div><div className="p-4 space-y-3">{flaggedPosts.map(p => <div key={p.id} className="p-4 border border-red-200 bg-red-50/50 rounded-xl flex justify-between items-start"><div><div className="flex items-center gap-2 mb-1"><span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs">{p.status === 'pending' ? 'Pending' : 'Flagged'}</span><span className="text-gray-500 text-sm">{p.author}</span></div><h3 className="font-semibold text-gray-800">{p.title}</h3><p className="text-gray-600 text-sm">{p.content}</p></div><div className="flex gap-2"><button onClick={() => setAdminViewThread(p)} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Eye size={18}/></button><button onClick={() => approvePost(p.id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg"><CheckCircle size={18}/></button><button onClick={() => deletePost(p.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={18}/></button></div></div>)}{flaggedReplies.map((r,i) => <div key={i} className="p-4 border border-orange-200 bg-orange-50/50 rounded-xl flex justify-between items-start"><div><div className="flex items-center gap-2 mb-1"><span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded text-xs">Flagged Reply</span><span className="text-gray-500 text-sm">on "{r.postTitle}"</span></div><p className="text-gray-600">"{r.text}" — {r.author}</p></div><div className="flex gap-2"><button onClick={() => setAdminViewThread(forumPosts.find(p => p.id === r.postId))} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Eye size={18}/></button><button onClick={() => unflagReply(r.postId, r.id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg"><CheckCircle size={18}/></button><button onClick={() => deleteReply(r.postId, r.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={18}/></button></div></div>)}</div></div>}
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden"><div className="px-6 py-4 border-b flex items-center gap-3"><MessageSquare className="text-teal-600"/><h2 className="text-xl font-bold text-gray-800">All Posts</h2></div><div className="divide-y">{forumPosts.map(p => <div key={p.id} className="p-4 hover:bg-gray-50 flex justify-between items-center"><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className={`px-2 py-0.5 rounded text-xs ${p.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>{p.status}</span><button onClick={() => setAdminViewUser({ id: p.authorId, name: p.author })} className="text-sm text-teal-600 hover:underline">{p.author}</button><span className="text-gray-400 text-sm">{p.date}</span></div><h3 className="font-semibold text-gray-800">{p.title}</h3><p className="text-gray-500 text-sm">{p.replies.length} replies • {p.upvotes}↑ {p.downvotes}↓</p></div><div className="flex gap-2"><button onClick={() => setAdminViewThread(p)} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Eye size={18}/></button>{p.status !== 'approved' && <button onClick={() => approvePost(p.id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg"><CheckCircle size={18}/></button>}<button onClick={() => deletePost(p.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={18}/></button></div></div>)}</div></div>
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden"><div className="px-6 py-4 border-b flex items-center gap-3"><Users className="text-cyan-600"/><h2 className="text-xl font-bold text-gray-800">Forum Users</h2></div><div className="p-4 flex flex-wrap gap-2">{allAuthors.map((a,i) => <button key={i} onClick={() => setAdminViewUser(a)} className="px-3 py-2 bg-gray-100 hover:bg-teal-100 rounded-lg text-sm flex items-center gap-2"><User size={14}/>{a.name}<ChevronRight size={14}/></button>)}</div></div>
+    </div>
+  )};
+
+  const AdminMailing = () => (
+    <div className="bg-white rounded-2xl shadow-lg overflow-hidden"><div className="px-6 py-4 border-b flex items-center gap-3"><Mail className="text-emerald-600"/><h2 className="text-xl font-bold text-gray-800">Mailing List ({mailingList.length})</h2></div><div className="p-6 flex flex-wrap gap-3">{mailingList.map((e,i) => <div key={i} className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full flex items-center gap-2 text-sm">{e}<button onClick={() => removeMail(e)} className="hover:bg-emerald-200 rounded-full p-1"><X size={14}/></button></div>)}</div></div>
+  );
+
+  const AdminView = () => (
+    <div className="min-h-screen bg-gray-100">
+      <div className="bg-gradient-to-r from-slate-800 to-slate-700 text-white px-6 py-4"><div className="max-w-7xl mx-auto flex items-center justify-between"><div className="flex items-center gap-3"><Droplets size={28} className="text-teal-400"/><h1 className="text-xl font-bold">Admin</h1></div><div className="flex gap-3 text-sm"><span className="bg-teal-500/20 text-teal-300 px-3 py-1 rounded-full">{users.length} Volunteers</span><span className="bg-orange-500/20 text-orange-300 px-3 py-1 rounded-full">{allUserDocs.filter(d => d.status === 'pending').length} Pending</span></div></div></div>
+      <div className="max-w-7xl mx-auto px-6 py-6"><div className="flex gap-2 mb-6 bg-white rounded-xl p-1.5 shadow-sm overflow-x-auto">{adminTabs.map(t => <button key={t.id} onClick={() => { setAdminTab(t.id); setAdminViewThread(null); setAdminViewUser(null); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${adminTab === t.id ? 'bg-teal-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><t.icon size={18}/>{t.label}</button>)}</div>{adminTab === 'volunteers' && <AdminVolunteers/>}{adminTab === 'events' && <AdminEvents/>}{adminTab === 'documents' && <AdminDocuments/>}{adminTab === 'forum' && <AdminForum/>}{adminTab === 'mailing' && <AdminMailing/>}</div>
+      {showEventModal && <EventFormModal/>}
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="fixed top-4 right-4 z-50 bg-white rounded-full shadow-lg p-1 flex"><button onClick={() => setView('user')} className={`px-4 py-2 rounded-full text-sm font-medium ${view === 'user' ? 'bg-teal-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>User</button><button onClick={() => setView('admin')} className={`px-4 py-2 rounded-full text-sm font-medium ${view === 'admin' ? 'bg-slate-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>Admin</button></div>
+      {view === 'user' ? <UserView/> : <AdminView/>}
+    </div>
+  );
+}
