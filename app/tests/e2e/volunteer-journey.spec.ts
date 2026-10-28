@@ -362,6 +362,77 @@ test('anonymous forum participants keep thread handles and admins can inspect th
   }
 });
 
+test('forum threads keep URL, history, notification links, and replies in sync', async ({ page }) => {
+  const suffix = Date.now();
+  const password = 'local-test-password';
+  const userName = `threads-${suffix}`;
+  const email = `${userName}@example.test`;
+  const account = await getAdminAuth(adminApp).createUser({ email, password, emailVerified: true });
+  await testEnv.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore();
+    await db.doc(`users/${account.uid}`).set({ userName, name: userName, email, moderated: false });
+    for (const [id, title, minutes] of [['post-a', 'Thread A', 2], ['post-b', 'Thread B', 1]] as const) {
+      await db.doc(`forumPosts/${id}`).set({
+        title, content: `${title} body.`, author: 'sam', authorUserName: 'sam', authorId: 'someone-else', anonymous: false,
+        date: 'today', createdAt: new Date(Date.now() - minutes * 60_000), status: 'approved',
+        flagged: false, upvotes: 0, downvotes: 0, replies: [],
+      });
+    }
+  });
+  const threadHeading = (title: string) => page.getByRole('heading', { level: 2, name: title });
+
+  // Legacy notification links land on the canonical thread URL, and refresh keeps it.
+  await page.goto('/forum?post=post-b');
+  await expect(threadHeading('Thread B')).toBeVisible();
+  await expect(page).toHaveURL(/\/forum\/post-b$/);
+  await page.reload();
+  await expect(threadHeading('Thread B')).toBeVisible();
+
+  // In-app navigation and browser history follow the thread shown.
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page).toHaveURL(/\/forum$/);
+  await page.getByRole('link', { name: 'Thread A' }).click();
+  await expect(page).toHaveURL(/\/forum\/post-a$/);
+  await expect(threadHeading('Thread A')).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/forum$/);
+  await expect(page.getByRole('heading', { name: '0 Replies' })).toHaveCount(0);
+  await page.goForward();
+  await expect(threadHeading('Thread A')).toBeVisible();
+  const nav = page.getByRole('navigation', { name: 'Primary navigation' });
+  await nav.getByRole('link', { name: 'Events' }).click();
+  await nav.getByRole('link', { name: 'Forum' }).click();
+  await expect(page).toHaveURL(/\/forum$/);
+  await expect(page.getByRole('heading', { name: '0 Replies' })).toHaveCount(0);
+
+  await page.goto('/forum/missing-thread');
+  await expect(page.getByRole('heading', { name: /this discussion isn.t available/i })).toBeVisible();
+  await page.getByRole('link', { name: /back to forum/i }).click();
+  await expect(page).toHaveURL(/\/forum$/);
+
+  // A signed-in reply sent with an impatient double Enter posts once and the
+  // thread stays on screen.
+  await page.goto('/forum/post-a');
+  await page.getByRole('button', { name: /sign in/i }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Sign In' });
+  await dialog.getByPlaceholder('Email').fill(email);
+  await dialog.getByPlaceholder('Password').fill(password);
+  await dialog.getByRole('button', { name: 'Sign In', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(/\/forum\/post-a$/);
+  const replyBox = page.getByPlaceholder('Write a reply...');
+  await replyBox.fill('Count me in.');
+  await replyBox.focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Count me in.', { exact: true })).toHaveCount(1);
+  await expect(threadHeading('Thread A')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '1 Replies' })).toBeVisible();
+  await testEnv.withSecurityRulesDisabled(async ctx => {
+    expect((await ctx.firestore().doc('forumPosts/post-a').get()).data()?.replies).toHaveLength(1);
+  });
+});
+
 test('account auth enforces password limits and supports reset, change, and fresh sign-in', async ({ page }) => {
   test.slow();
   const suffix = Date.now();

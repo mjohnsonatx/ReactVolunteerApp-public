@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const mocks = vi.hoisted(() => ({
@@ -64,7 +64,7 @@ const mocks = vi.hoisted(() => ({
   replyToProfileMessageFn: vi.fn(),
   state: {
     auth: { currentUser: null, isAdmin: false, userVotes: {} },
-    publicData: { events: [], forumPosts: [], publicDocs: [], overlayGroups: [] },
+    publicData: { events: [], forumPosts: [], publicDocs: [], overlayGroups: [] } as Record<string, any>,
     userData: { rsvps: [], myMessages: [] },
     adminData: {
       allUsers: [],
@@ -735,10 +735,192 @@ describe('event and forum flows', () => {
     mocks.state.publicData.forumPosts = [{ ...post, status: 'pending' }];
     rerender(<AppProvider><ForumDetailHarness /></AppProvider>);
     expect(screen.queryByText('I can bring bags.')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Forum' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'This discussion has been removed' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/forum/post-1');
     mocks.state.publicData.forumPosts = [];
     rerender(<AppProvider><ForumDetailHarness /></AppProvider>);
     expect(screen.queryByRole('heading', { name: 'Live cleanup thread' })).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('link', { name: /back to forum/i }));
+    expect(window.location.pathname).toBe('/forum');
+    expect(screen.getByRole('heading', { name: 'Forum' })).toBeInTheDocument();
+  });
+
+  it('explains a thread removed mid-reply and leads back to the forum', async () => {
+    mocks.state.auth.currentUser = { id: 'user-1', name: 'Jane', email: 'jane@example.com', moderated: false };
+    const post = {
+      id: 'post-1', title: 'Doomed thread', author: 'Sam', authorId: 'user-2',
+      content: 'Meet at 9.', date: 'today', status: 'approved', replies: [], upvotes: 0, downvotes: 0,
+    };
+    mocks.state.publicData.forumPosts = [post];
+    const { rerender } = renderWithProvider(<ForumDetailHarness />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText('open thread'));
+    await user.type(screen.getByPlaceholderText(/write a reply/i), 'Half a reply');
+
+    // A moderator deletes the thread while the member is typing.
+    mocks.state.publicData.forumPosts = [];
+    rerender(<AppProvider><ForumDetailHarness /></AppProvider>);
+    const heading = screen.getByRole('heading', { name: 'This discussion has been removed' });
+    expect(heading).toHaveFocus();
+    expect(screen.getByText(/a moderator removed it/i)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/write a reply/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /back to forum/i })).toHaveAttribute('href', '/forum');
+
+    await user.click(screen.getByRole('link', { name: /back to forum/i }));
+    expect(window.location.pathname).toBe('/forum');
+    expect(screen.getByRole('heading', { name: 'Forum' })).toBeInTheDocument();
+  });
+
+  it('treats a link to a thread that is already gone as unavailable, not removed', async () => {
+    window.history.replaceState(null, '', '/forum/never-existed');
+    mocks.state.publicData = { ...mocks.state.publicData, forumPosts: [], forumSynced: true };
+    renderWithProvider(<ForumPage />);
+    const heading = screen.getByRole('heading', { name: /this discussion isn.t available/i });
+    expect(heading).not.toHaveFocus();
+    expect(screen.getByText(/the link may be incorrect/i)).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('link', { name: /back to forum/i }));
+    expect(window.location.pathname).toBe('/forum');
+  });
+
+  it('keeps the URL, history, and open thread in sync', async () => {
+    const posts = ['a', 'b'].map(id => ({
+      id: `post-${id}`, title: `Thread ${id}`, author: 'Sam', authorId: 'user-2',
+      content: 'Meet at 9.', date: 'today', status: 'approved', replies: [], upvotes: 0, downvotes: 0,
+    }));
+    mocks.state.publicData.forumPosts = posts;
+    window.history.replaceState(null, '', '/forum?post=post-b');
+    renderWithProvider(<ForumPage />);
+    const user = userEvent.setup();
+
+    // Legacy notification links land on the canonical thread URL.
+    expect(await screen.findByRole('heading', { name: 'Thread b' })).toBeInTheDocument();
+    expect(`${window.location.pathname}${window.location.search}`).toBe('/forum/post-b');
+
+    await user.click(screen.getByRole('button', { name: /back/i }));
+    await user.click(screen.getByRole('link', { name: 'Thread a' }));
+    expect(window.location.pathname).toBe('/forum/post-a');
+    expect(screen.getByRole('heading', { name: 'Thread a' })).toBeInTheDocument();
+
+    // Browser back returns to the list instead of leaving a ghost thread open.
+    act(() => {
+      window.history.replaceState(null, '', '/forum');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    expect(screen.getByRole('heading', { name: 'Forum' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '0 Replies' })).not.toBeInTheDocument();
+  });
+
+  it('does not call a linked thread missing until the server has answered', async () => {
+    const post = {
+      id: 'post-1', title: 'Cached thread', author: 'Sam', authorId: 'user-2',
+      content: 'Meet at 9.', date: 'today', status: 'approved', replies: [], upvotes: 0, downvotes: 0,
+    };
+    window.history.replaceState(null, '', '/forum/post-1');
+    // Empty cache answer (offline or stalled connection): still loading.
+    mocks.state.publicData = { ...mocks.state.publicData, forumPosts: [], forumSynced: false };
+    const { rerender } = renderWithProvider(<ForumPage />);
+    expect(screen.getByRole('status')).toHaveTextContent(/loading discussions/i);
+    expect(screen.queryByText(/removed|isn.t available/i)).not.toBeInTheDocument();
+
+    // The thread is in the cache: show it before the server confirms.
+    mocks.state.publicData = { ...mocks.state.publicData, forumPosts: [post], forumSynced: false };
+    rerender(<AppProvider><ForumPage /></AppProvider>);
+    expect(screen.getByRole('heading', { name: 'Cached thread' })).toBeInTheDocument();
+
+    // The list does not call an unconfirmed empty cache "no posts".
+    window.history.replaceState(null, '', '/forum');
+    mocks.state.publicData = { ...mocks.state.publicData, forumPosts: [], forumSynced: false };
+    rerender(<AppProvider><ForumPage /></AppProvider>);
+    act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
+    expect(screen.queryByText(/no posts yet/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/loading discussions/i);
+    window.history.replaceState(null, '', '/forum/post-1');
+    act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
+
+    // Only a server answer without the thread makes it missing (it was shown
+    // from the cache, so it reads as removed).
+    mocks.state.publicData = { ...mocks.state.publicData, forumPosts: [], forumSynced: true };
+    rerender(<AppProvider><ForumPage /></AppProvider>);
+    expect(screen.getByRole('heading', { name: 'This discussion has been removed' })).toBeInTheDocument();
+
+    const retryForum = vi.fn();
+    mocks.state.publicData = { ...mocks.state.publicData, forumSynced: false, forumError: true, retryForum };
+    rerender(<AppProvider><ForumPage /></AppProvider>);
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not load the forum/i);
+    expect(screen.queryByText(/removed|isn.t available/i)).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: /try again/i }));
+    expect(retryForum).toHaveBeenCalled();
+  });
+
+  it('sends a reply once however Enter is pressed', async () => {
+    mocks.state.auth.currentUser = { id: 'user-1', name: 'Jane', email: 'jane@example.com', moderated: false };
+    mocks.state.publicData.forumPosts = [{
+      id: 'post-1', title: 'Cleanup thread', author: 'Sam', authorId: 'user-2',
+      content: 'Meet at 9.', date: 'today', status: 'approved', replies: [], upvotes: 0, downvotes: 0,
+    }];
+    let finish: (value: unknown) => void = () => {};
+    mocks.submitReplyFn.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    renderWithProvider(<ForumDetailHarness />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText('open thread'));
+    const input = screen.getByPlaceholderText(/write a reply/i);
+    await user.type(input, 'こんにちは');
+
+    // Enter that confirms an IME composition must not send.
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 229, isComposing: true });
+    expect(mocks.submitReplyFn).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(mocks.submitReplyFn).toHaveBeenCalledTimes(1);
+    await act(async () => { finish({ data: { status: 'approved' } }); });
+    expect(screen.getByRole('heading', { name: /cleanup thread/i })).toBeInTheDocument();
+  });
+
+  it('keeps a draft typed in another thread when an earlier reply finishes sending', async () => {
+    mocks.state.auth.currentUser = { id: 'user-1', name: 'Jane', email: 'jane@example.com', moderated: false };
+    const thread = (id: string, title: string) => ({
+      id, title, author: 'Sam', authorId: 'user-2', content: 'x', date: 'today', status: 'approved', replies: [], upvotes: 0, downvotes: 0,
+    });
+    mocks.state.publicData.forumPosts = [thread('post-a', 'Thread A'), thread('post-b', 'Thread B')];
+    let finish: (value: unknown) => void = () => {};
+    mocks.submitReplyFn.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    renderWithProvider(<ForumDetailHarness />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText('open thread'));
+    await user.type(screen.getByPlaceholderText(/write a reply/i), 'Reply to A{Enter}');
+    expect(mocks.submitReplyFn).toHaveBeenCalledWith(expect.objectContaining({ postId: 'post-a', text: 'Reply to A' }));
+
+    // While A's reply is still sending, the member goes back to thread B
+    // (browser Back, swipe, or any browser without `inert`) and starts typing.
+    act(() => {
+      window.history.pushState(null, '', '/forum/post-b');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    // The page is aria-hidden behind the "Posting reply..." overlay meanwhile.
+    expect(screen.getByRole('heading', { name: 'Thread B', hidden: true })).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(/write a reply/i), { target: { value: 'Draft for B' } });
+
+    await act(async () => { finish({ data: { status: 'pending' } }); });
+    expect(screen.getByPlaceholderText(/write a reply/i)).toHaveValue('Draft for B');
+    // A's "awaiting approval" notice belongs to A, not to the thread on screen.
+    expect(screen.queryByText(/awaiting administrator approval/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps text typed after the sent reply when the send finishes', async () => {
+    mocks.state.auth.currentUser = { id: 'user-1', name: 'Jane', email: 'jane@example.com', moderated: false };
+    mocks.state.publicData.forumPosts = [{
+      id: 'post-a', title: 'Thread A', author: 'Sam', authorId: 'user-2', content: 'x', date: 'today', status: 'approved', replies: [], upvotes: 0, downvotes: 0,
+    }];
+    let finish: (value: unknown) => void = () => {};
+    mocks.submitReplyFn.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    renderWithProvider(<ForumDetailHarness />);
+    const user = userEvent.setup();
+    await user.click(screen.getByText('open thread'));
+    await user.type(screen.getByPlaceholderText(/write a reply/i), 'First thought{Enter}');
+    fireEvent.change(screen.getByPlaceholderText(/write a reply/i), { target: { value: 'First thought and a second one' } });
+    await act(async () => { finish({ data: { status: 'approved' } }); });
+    expect(screen.getByPlaceholderText(/write a reply/i)).toHaveValue('and a second one');
   });
 
   it('shows a graceful reply failure without losing the thread', async () => {

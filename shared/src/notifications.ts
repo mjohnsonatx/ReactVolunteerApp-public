@@ -94,7 +94,7 @@ export function forumReplyMessage(postId: string, postTitle: unknown, replyAutho
     topic: 'forumReplies',
     title: `New reply: ${clip(postTitle, 80) || 'Forum thread'}`,
     body: `${clip(replyAuthor, 40) || 'A member'}: ${clip(replyText, 140)}`,
-    link: `/forum?post=${encodeURIComponent(postId)}`,
+    link: `/forum/${encodeURIComponent(postId)}`,
   };
 }
 
@@ -103,7 +103,7 @@ export function forumPostMessage(postId: string, postTitle: unknown, postAuthor:
     topic: 'forumPosts',
     title: `New forum post: ${clip(postTitle, 80) || 'Untitled'}`,
     body: `Started by ${clip(postAuthor, 40) || 'a member'}.`,
-    link: `/forum?post=${encodeURIComponent(postId)}`,
+    link: `/forum/${encodeURIComponent(postId)}`,
   };
 }
 

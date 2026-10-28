@@ -4,7 +4,7 @@ import { useApp } from '@runtime/app-context';
 
 export default function AccountMenu({ embedded = false, adminOnly = false }: { embedded?: boolean; adminOnly?: boolean }) {
   const {
-    currentUser, isAdmin, view, setView, setPage, setSelectedPost,
+    currentUser, isAdmin, view, setView, setPage,
     accountMenuOpen, setAccountMenuOpen, handleSignOut, setAuthMode, setShowAuthModal,
   } = useApp();
   const username = currentUser?.userName || 'there';
@@ -32,7 +32,7 @@ export default function AccountMenu({ embedded = false, adminOnly = false }: { e
                 {!adminOnly && (
                   <>
                     <button
-                      onClick={() => { setView('user'); setPage('profile'); setSelectedPost(null); setAccountMenuOpen(false); }}
+                      onClick={() => { setView('user'); setPage('profile'); setAccountMenuOpen(false); }}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                     >
                       <User size={16} /> My Profile

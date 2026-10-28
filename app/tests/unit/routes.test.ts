@@ -21,6 +21,19 @@ describe('clean URL routes', () => {
     expect(parseRoute('/polls/poll-123')).toMatchObject({ page: 'pollDetail', params: { pollId: 'poll-123' } });
   });
 
+  it('gives each forum thread its own URL and upgrades legacy notification links', () => {
+    expect(parseRoute('/forum')).toMatchObject({ page: 'forum', params: {}, path: '/forum' });
+    expect(parseRoute('/forum/post-123')).toMatchObject({
+      page: 'forumDetail',
+      params: { postId: 'post-123' },
+      path: '/forum/post-123',
+    });
+    expect(parseRoute('/forum?post=post-123')).toMatchObject({ page: 'forumDetail', params: { postId: 'post-123' }, path: '/forum/post-123' });
+    expect(parseRoute('/forum?post=%3Cscript%3E')).toMatchObject({ page: 'forum', params: {}, path: '/forum' });
+    expect(pathForPage('forumDetail', { postId: 'post-123' })).toBe('/forum/post-123');
+    expect(pathForPage('forumDetail')).toBe('/forum');
+  });
+
   it('builds encoded-free app paths only for safe record ids', () => {
     expect(pathForPage('documentDetail', { documentId: 'doc_123' })).toBe('/documents/doc_123');
     expect(parseRoute('/documents/%E0%A4%A')).toMatchObject({ page: 'documents', params: {} });

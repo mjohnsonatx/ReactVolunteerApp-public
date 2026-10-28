@@ -66,6 +66,21 @@ describe('account profile loading', () => {
     await act(async () => { finish(snapshot); await pending; });
   });
 
+  it('keeps the page when a background token refresh cannot reread the profile', async () => {
+    h.read.mockResolvedValue({ exists: () => true, data: () => ({ userName: 'member' }) });
+    const { result } = renderHook(useAuth);
+    await act(() => h.listener(h.currentUser));
+    h.read.mockRejectedValue(new Error('unavailable'));
+    await act(() => h.listener(h.currentUser));
+    expect(result.current.currentUser.userName).toBe('member');
+    expect(result.current.accountLoadError).toBe('');
+    expect(result.current.authLoading).toBe(false);
+
+    // An explicit retry still reports the failure.
+    await act(() => result.current.refreshUserProfile());
+    expect(result.current.accountLoadError).toMatch(/could not load/i);
+  });
+
   it('only offers setup after verification and never for deleting accounts', () => {
     expect(profileStatus(true, { accountStatus: 'deleting' })).toBe('deleting');
     expect(profileStatus(true, { name: 'Member' })).toBe('incomplete');

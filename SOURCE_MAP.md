@@ -285,6 +285,8 @@ Playwright reports, coverage output, and environment files.
 
 ## `app/tests/e2e/`
 
+- `app/tests/e2e/forum-admin-delete.spec.ts` - Runs an MFA admin deleting a reported thread through the admin panel while a member is replying to it, and verifies the member's recovery path, server cleanup, audit log, and non-admin denial.
+- `app/tests/e2e/forum-live-thread.spec.ts` - Verifies an open thread and reply draft survive live replies, votes, reports, moderation, other threads changing, focus changes, and network loss, then a thread removal.
 - `app/tests/e2e/callable-functions.spec.ts` - Exercises callable Functions against Firebase emulators for public, auth, username uniqueness, forum reports, document, admin, forum, and overlay workflows.
 - `app/tests/e2e/volunteer-journey.spec.ts` - Runs Playwright visitor and signed-in volunteer journeys against local Firebase emulators.
 
@@ -309,6 +311,7 @@ Playwright reports, coverage output, and environment files.
 - `app/tests/unit/adminUsers.test.tsx` - Unit tests the admin registered-user directory search and profile navigation.
 - `app/tests/unit/csvSafe.test.ts` - Unit tests CSV formula-injection escaping, quoting, mailing-list rows, and export file names.
 - `app/tests/unit/eventMediaAndPolls.test.ts` - Unit tests event image type/size/path rules, comment validation and anonymity labels, and poll option/window/result-visibility rules.
+- `app/tests/unit/forumListener.test.tsx` - Unit tests the forum listener's cache versus server-confirmed state and its retry after a failed listener.
 - `app/tests/unit/forumAnonymization.test.ts` - Unit tests forum anonymization update-shape behavior.
 - `app/tests/unit/geojson.test.ts` - Unit tests GeoJSON sanitization and property pruning.
 - `app/tests/unit/htmlEscape.test.ts` - Unit tests HTML escaping and attribute breakout defense.
@@ -322,3 +325,4 @@ Playwright reports, coverage output, and environment files.
 ## `doc/`
 
 - `doc/2026-07-events-polls-mailing-list.md` - Write-up of the event images, event comments, polls, mailing-list export, and routing work plus ancillary findings.
+- `doc/2026-10-forum-thread-reliability.md` - Write-up of the forum thread routing, loading, reply, and removal fixes, plus open follow-up findings.

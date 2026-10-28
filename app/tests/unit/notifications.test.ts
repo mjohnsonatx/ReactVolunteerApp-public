@@ -60,7 +60,7 @@ describe('notification messages', () => {
     expect(message.title).toBe('New reply: Trail cleanup');
     expect(message.body.startsWith('Anonymous 2: ')).toBe(true);
     expect(message.body.length).toBeLessThanOrEqual(160);
-    expect(message.link).toBe('/forum?post=post%201');
+    expect(message.link).toBe('/forum/post%201');
   });
 
   it('summarizes an event with its date, time and place', () => {

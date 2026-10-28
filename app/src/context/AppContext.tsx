@@ -76,7 +76,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     userVotes,
     setUserVotes,
   } = useAuth();
-  const { events, forumPosts: publicForumPosts, publicDocs, overlayGroups } = usePublicData(isAdmin);
+  const {
+    events, forumPosts: publicForumPosts, forumSynced = true, forumError = false, retryForum = () => {}, publicDocs, overlayGroups,
+  } = usePublicData(isAdmin) as Record<string, any>;
   const { rsvps, myMessages } = useUserData(currentUser);
   const {
     allUsers, adminRsvps, errorLogs, adminAuditLogs = [], volunteers, allUserDocs, mailingList,
@@ -102,17 +104,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setView = (nextView) => navigate(nextView === 'admin' ? pathForAdminTab(route.adminTab) : '/');
   const goToEvent = (eventId) => navigate(pathForPage('eventDetail', { eventId }));
   const goToPoll = (pollId) => navigate(pathForPage('pollDetail', { pollId }));
+  const goToForumPost = (postId) => navigate(pathForPage('forumDetail', { postId }));
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [openFaq, setOpenFaq] = useState(null);
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  // Keep the open thread attached to the live snapshot, not a stale copy from
-  // the click. Replies, votes, moderation, and deletion must remain visible.
+  // /forum/:postId is the source of truth for the open thread, so the URL,
+  // history, and visible discussion cannot drift apart. The thread itself is
+  // read from the live snapshot so replies, votes, moderation, and deletion
+  // remain visible.
+  const selectedPostId = route.page === 'forumDetail' ? route.params.postId ?? null : null;
   const selectedPost = forumPosts.find(post => post.id === selectedPostId && post.status === 'approved') || null;
   const setSelectedPost = (post) => {
-    setSelectedPostId(post?.id ?? null);
-    setReplyText('');
-    setReplyAnonymous(false);
+    if (post?.id) goToForumPost(post.id);
+    else if (route.page === 'forumDetail') navigate(pathForPage('forum'));
   };
   const [selectedEventMap, setSelectedEventMap] = useState(null);
   const [adminViewThread, setAdminViewThread] = useState(null);
@@ -122,6 +126,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [editingEventId, setEditingEventId] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [replyAnonymous, setReplyAnonymous] = useState(false);
+  const replyInFlight = useRef(false);
+  // The thread on screen right now, for replies that finish sending after the
+  // member has moved on.
+  const selectedPostIdRef = useRef(selectedPostId);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [viewingDoc, setViewingDoc] = useState(null);
   const [adminProfileUser, setAdminProfileUser] = useState(null);
@@ -172,6 +180,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [mailError, setMailError] = useState('');
   const [rsvpError, setRsvpError] = useState('');
   const [postError, setPostError] = useState('');
+  // Drafts and reply errors belong to one thread; switching threads (including
+  // via back and forward, or leaving a removed one) starts fresh, so a failed
+  // send to a removed thread cannot resurface later in the New Post dialog.
+  useEffect(() => {
+    selectedPostIdRef.current = selectedPostId;
+    setReplyText('');
+    setReplyAnonymous(false);
+    setPostError('');
+  }, [selectedPostId]);
   const [reportError, setReportError] = useState('');
   const [eventError, setEventError] = useState('');
   const [eventNotice, setEventNotice] = useState('');
@@ -385,21 +402,32 @@ const handleVote = async (postId, replyId, type) => {
 };
 
 const handleReply = async (postId) => {
-  if (!replyText.trim() || !currentUser) return;
+  // Enter can repeat (held key, IME, impatient double press) while the
+  // callable is still running; only one submission per reply.
+  if (!replyText.trim() || !currentUser || replyInFlight.current) return;
   setPostError('');
   const cleanText = enforceLimit(sanitizeMultiline(replyText), LIMITS.replyText);
   if (!cleanText) return;
   const { blocked, reason } = detectMalicious(cleanText);
   if (blocked) { setPostError(`Reply blocked: ${reason}`); return; }
+  replyInFlight.current = true;
+  const sentText = replyText;
   try {
-    const result = await runBackendTask('Posting reply...', () => submitReplyFn({ postId, text: replyText, anonymous: replyAnonymous }));
-    setReplyText('');
+    const result = await runBackendTask('Posting reply...', () => submitReplyFn({ postId, text: sentText, anonymous: replyAnonymous }));
+    // The member may have switched threads or kept typing while this was in
+    // flight (browser Back, swipe, or a browser without `inert`). Remove only
+    // what was sent, and only from the thread it was sent from.
+    if (selectedPostIdRef.current !== postId) return;
+    setReplyText(current => (current.startsWith(sentText) ? current.slice(sentText.length).trimStart() : current));
     if ((result.data as any)?.status === 'pending') {
       setPostError('Your reply is awaiting administrator approval.');
     }
   } catch (err) {
-    setPostError(callableErrorMessage(err, 'Could not post reply. Please try again.'));
+    const message = callableErrorMessage(err, 'Could not post reply. Please try again.');
+    setPostError(selectedPostIdRef.current === postId ? message : `Your reply in the previous thread was not posted: ${message}`);
     logError(err, 'handleReply', { postId });
+  } finally {
+    replyInFlight.current = false;
   }
 };
 
@@ -799,7 +827,6 @@ const submitReport = async (e) => {
     try {
       await runBackendTask('Deleting forum post...', () => deleteForumPostFn({ id }));
       setAdminViewThread(null);
-      setSelectedPost(null);
     } catch (err) {
       logError(err, 'deletePost', { id });
     }
@@ -1118,6 +1145,9 @@ const submitReport = async (e) => {
     setUserVotes,
     events,
     forumPosts,
+    forumSynced,
+    forumError,
+    retryForum,
     publicDocs,
     overlayGroups,
     rsvps,
@@ -1138,6 +1168,7 @@ const submitReport = async (e) => {
     goBack,
     goToEvent,
     goToPoll,
+    goToForumPost,
     closeDocument,
     view,
     setView,

@@ -50,5 +50,11 @@ export function useRoute(): { route: AppRoute; navigate: Navigate; goBack: GoBac
     }
   }, [path, navigate]);
 
+  // Legacy /forum?post=<id> notification links become /forum/<id> through the
+  // router so the address bar, route state, and open thread stay in sync.
+  useEffect(() => {
+    if (route.page === 'forumDetail' && path !== route.path) navigate(route.path, { replace: true });
+  }, [path, route, navigate]);
+
   return { route, navigate, goBack };
 }

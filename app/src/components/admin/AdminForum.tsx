@@ -152,8 +152,8 @@ export default function AdminForum() {
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded text-xs ${live.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>{live.status}</span>
-                {live.status !== 'approved' && <button onClick={() => approvePost(live.id)} className="text-emerald-600 hover:bg-emerald-50 p-1 rounded"><CheckCircle size={16} /></button>}
-                <button onClick={() => deletePost(live.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16} /></button>
+                {live.status !== 'approved' && <button aria-label={`Approve post: ${live.title}`} onClick={() => approvePost(live.id)} className="text-emerald-600 hover:bg-emerald-50 p-1 rounded"><CheckCircle size={16} /></button>}
+                <button aria-label={`Delete post: ${live.title}`} onClick={() => deletePost(live.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16} /></button>
               </div>
             </div>
             <p className="text-gray-700">{live.content}</p>
@@ -211,9 +211,9 @@ export default function AdminForum() {
                   <ReportSummary reports={reportsFor(p.id)} />
                 </div>
                 <div className="flex gap-2 ml-4 shrink-0">
-                  <button onClick={() => setAdminViewThread(p)} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Eye size={18} /></button>
-                  <button onClick={() => approvePost(p.id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg"><CheckCircle size={18} /></button>
-                  <button onClick={() => deletePost(p.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={18} /></button>
+                  <button aria-label={`View post: ${p.title}`} onClick={() => setAdminViewThread(p)} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Eye size={18} /></button>
+                  <button aria-label={`Approve post: ${p.title}`} onClick={() => approvePost(p.id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg"><CheckCircle size={18} /></button>
+                  <button aria-label={`Delete post: ${p.title}`} onClick={() => deletePost(p.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={18} /></button>
                 </div>
               </div>
             ))}
@@ -279,9 +279,9 @@ export default function AdminForum() {
                 <p className="text-gray-500 text-sm">{(p.replies || []).length} replies - {p.upvotes || 0} up - {p.downvotes || 0} down</p>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setAdminViewThread(p)} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Eye size={18} /></button>
-                {p.status !== 'approved' && <button onClick={() => approvePost(p.id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg"><CheckCircle size={18} /></button>}
-                <button onClick={() => deletePost(p.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={18} /></button>
+                <button aria-label={`View post: ${p.title}`} onClick={() => setAdminViewThread(p)} className="text-teal-600 hover:bg-teal-50 p-2 rounded-lg"><Eye size={18} /></button>
+                {p.status !== 'approved' && <button aria-label={`Approve post: ${p.title}`} onClick={() => approvePost(p.id)} className="text-emerald-600 hover:bg-emerald-50 p-2 rounded-lg"><CheckCircle size={18} /></button>}
+                <button aria-label={`Delete post: ${p.title}`} onClick={() => deletePost(p.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Trash2 size={18} /></button>
               </div>
             </div>
           ))}

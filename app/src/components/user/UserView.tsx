@@ -38,7 +38,7 @@ const navItems = [
 
 export default function UserView() {
   const {
-    page, route, setSelectedPost,
+    page, route,
     viewingDoc, closeDocument, showAuthModal, showRsvpModal, selectedEventMap, showNewPostModal,
     reportTarget,
   } = useApp();
@@ -52,6 +52,7 @@ export default function UserView() {
       polls: 'Polls | WatershedCrew',
       pollDetail: 'Poll | WatershedCrew',
       forum: 'Forum | WatershedCrew',
+      forumDetail: 'Discussion | WatershedCrew',
       documents: 'Documents | WatershedCrew',
       documentDetail: viewingDoc?.title ? `${viewingDoc.title} | WatershedCrew` : 'Document | WatershedCrew',
       plants: 'Plant ID Guide | WatershedCrew',
@@ -73,13 +74,16 @@ export default function UserView() {
             <span className="font-bold text-gray-800 whitespace-nowrap">Friends of Tillery Fields</span>
           </div>
           <nav aria-label="Primary navigation" className="col-span-2 row-start-2 flex min-w-0 flex-wrap items-center gap-1 sm:col-span-3 sm:justify-center sm:gap-2 xl:col-span-1 xl:col-start-2 xl:row-start-1">
-          {navItems.map(n => (
-            <AppLink key={n.id} to={pathForPage(n.id)} onClick={() => setSelectedPost(null)}
-              aria-current={page === n.id || page === `${n.id.replace(/s$/, '')}Detail` ? 'page' : undefined}
-              className={`flex items-center gap-2 px-2 py-2 sm:px-3 rounded-lg text-sm font-medium whitespace-nowrap ${page === n.id ? 'bg-teal-100 text-teal-700' : 'text-gray-600 hover:bg-gray-100'}`}>
-              <n.icon size={18} />{n.label}
-            </AppLink>
-          ))}
+          {navItems.map(n => {
+            const active = page === n.id || page === `${n.id.replace(/s$/, '')}Detail`;
+            return (
+              <AppLink key={n.id} to={pathForPage(n.id)}
+                aria-current={active ? 'page' : undefined}
+                className={`flex items-center gap-2 px-2 py-2 sm:px-3 rounded-lg text-sm font-medium whitespace-nowrap ${active ? 'bg-teal-100 text-teal-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+                <n.icon size={18} />{n.label}
+              </AppLink>
+            );
+          })}
           </nav>
           <div className="col-start-2 row-start-1 justify-self-end sm:col-start-3">
             <AccountMenu embedded />
@@ -99,7 +103,7 @@ export default function UserView() {
           {page === 'eventDetail' && <EventDetailPage />}
           {page === 'polls' && <PollsPage />}
           {page === 'pollDetail' && <PollDetailPage />}
-          {page === 'forum' && <ForumPage />}
+          {(page === 'forum' || page === 'forumDetail') && <ForumPage />}
           {PUBLIC_DOCUMENTS_ENABLED && (page === 'documents' || page === 'documentDetail') && <DocumentsPage />}
           {page === 'plants' && <PlantsPage />}
           {page === 'profile' && <ProfilePage />}
@@ -111,11 +115,11 @@ export default function UserView() {
 
       <footer className="mx-4 mb-4 mt-2 border-t border-gray-200 pt-6 text-center text-sm text-gray-400 sm:mx-8 sm:mb-8">
         <div className="flex items-center justify-center gap-4">
-          <AppLink to={pathForPage('about')} onClick={() => setSelectedPost(null)} className="hover:text-teal-600">About Me</AppLink>
+          <AppLink to={pathForPage('about')} className="hover:text-teal-600">About Me</AppLink>
           <span aria-hidden="true">|</span>
-          <AppLink to={pathForPage('privacy')} onClick={() => setSelectedPost(null)} className="hover:text-teal-600">Privacy Policy</AppLink>
+          <AppLink to={pathForPage('privacy')} className="hover:text-teal-600">Privacy Policy</AppLink>
           <span aria-hidden="true">|</span>
-          <AppLink to={pathForPage('cookies')} onClick={() => setSelectedPost(null)} className="hover:text-teal-600">Cookie Policy</AppLink>
+          <AppLink to={pathForPage('cookies')} className="hover:text-teal-600">Cookie Policy</AppLink>
         </div>
         <p className="mt-2">
           Contact: <a className="hover:text-teal-600" href="mailto:tilleryvolunteeradmin@gmail.com">tilleryvolunteeradmin@gmail.com</a>

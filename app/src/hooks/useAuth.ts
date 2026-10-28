@@ -18,11 +18,14 @@ export function useAuth() {
   const [accountLoadError, setAccountLoadError] = useState('');
   const loadVersion = useRef({ value: 0 });
   const activeUid = useRef<string | null>(null);
+  // The account whose profile is currently on screen, if one loaded.
+  const shownUid = useRef<string | null>(null);
 
-  const loadUser = useCallback(async (user: User | null) => {
+  const loadUser = useCallback(async (user: User | null, { explicit = false } = {}) => {
       const version = ++loadVersion.current.value;
       if (activeUid.current !== (user?.uid ?? null)) {
         activeUid.current = user?.uid ?? null;
+        shownUid.current = null;
         setAuthLoading(true);
         setCurrentUser(null);
         setHasAdminClaim(false);
@@ -57,6 +60,7 @@ export function useAuth() {
           setHasAdminMfaSession(adminMfaSession);
           setIsAdmin(adminMfaSession);
           setUserVotes(data.votes || {});
+          shownUid.current = user.uid;
         } else {
           setCurrentUser(null);
           setHasAdminClaim(false);
@@ -67,6 +71,11 @@ export function useAuth() {
       } catch (err) {
         if (version !== loadVersion.current.value) return;
         logError(err, 'auth-listener');
+        // Token refreshes happen in the background (hourly, or when a callable
+        // such as submitReply needs a fresh token). A transient profile read
+        // failure then must not replace the page the member is using with the
+        // account error screen; keep the profile already shown.
+        if (!explicit && user && shownUid.current === user.uid) return;
         setCurrentUser(null);
         setUserVotes({});
         setHasAdminClaim(false);
@@ -80,13 +89,13 @@ export function useAuth() {
 
   useEffect(() => {
     const generation = loadVersion.current;
-    const unsub = onIdTokenChanged(auth, loadUser);
+    const unsub = onIdTokenChanged(auth, user => loadUser(user));
     return () => { ++generation.value; unsub(); };
   }, [loadUser]);
 
   const refreshUserProfile = useCallback(() => {
     setAuthLoading(true);
-    return loadUser(auth.currentUser);
+    return loadUser(auth.currentUser, { explicit: true });
   }, [loadUser]);
 
   return {

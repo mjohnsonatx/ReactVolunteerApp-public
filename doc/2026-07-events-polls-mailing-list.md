@@ -19,6 +19,7 @@ shared a single URL. Routing is now history-based and URL-driven.
 | `/events/:eventId` | Event detail (gallery, comments, linked polls) |
 | `/polls` | Published polls |
 | `/polls/:pollId` | Single poll |
+| `/forum/:postId` | Forum thread (legacy `/forum?post=<id>` links redirect here) |
 | `/forum`, `/documents`, `/plants`, `/profile`, `/privacy`, `/cookies` | Existing pages |
 | `/admin/events` | Admin events + image manager + comment moderation |
 | `/admin/polls` | Admin poll console |

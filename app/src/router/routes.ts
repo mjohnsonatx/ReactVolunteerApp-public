@@ -15,6 +15,7 @@ export type UserPage =
   | 'polls'
   | 'pollDetail'
   | 'forum'
+  | 'forumDetail'
   | 'documents'
   | 'documentDetail'
   | 'plants'
@@ -22,11 +23,13 @@ export type UserPage =
   | 'privacy'
   | 'cookies';
 
+type RouteParams = { eventId?: string; pollId?: string; documentId?: string; postId?: string };
+
 export type AppRoute = {
   view: 'user' | 'admin';
   page: UserPage;
   adminTab: string;
-  params: { eventId?: string; pollId?: string; documentId?: string };
+  params: RouteParams;
   path: string;
 };
 
@@ -65,6 +68,7 @@ const USER_PAGE_PATHS: Record<UserPage, string> = {
   polls: '/polls',
   pollDetail: '/polls',
   forum: '/forum',
+  forumDetail: '/forum',
   documents: '/documents',
   documentDetail: '/documents',
   plants: '/plants',
@@ -91,7 +95,8 @@ function safeSegment(value: string | undefined): string | undefined {
 }
 
 export function parseRoute(pathname: string): AppRoute {
-  const clean = (pathname || '/').split('?')[0].split('#')[0];
+  const [beforeHash] = (pathname || '/').split('#');
+  const [clean, search = ''] = beforeHash.split('?');
   const segments = clean.split('/').filter(Boolean);
   const base: AppRoute = { view: 'user', page: 'home', adminTab: 'dashboard', params: {}, path: '/' };
 
@@ -117,6 +122,15 @@ export function parseRoute(pathname: string): AppRoute {
       : { ...base, page: 'polls', path: '/polls' };
   }
 
+  if (segments[0] === 'forum') {
+    // Older notification emails link to /forum?post=<id>; treat them as the
+    // thread route so useRoute can canonicalize the address bar.
+    const postId = safeSegment(segments[1]) || safeSegment(new URLSearchParams(search).get('post') ?? undefined);
+    return postId
+      ? { ...base, page: 'forumDetail', params: { postId }, path: `/forum/${postId}` }
+      : { ...base, page: 'forum', path: '/forum' };
+  }
+
   if (segments[0] === 'documents') {
     if (!PUBLIC_DOCUMENTS_ENABLED) return base;
     const documentId = safeSegment(segments[1]);
@@ -131,11 +145,12 @@ export function parseRoute(pathname: string): AppRoute {
 
 export function pathForPage(
   page: string,
-  params: { eventId?: string; pollId?: string; documentId?: string } = {},
+  params: RouteParams = {},
 ): string {
   const normalized = normalizePage(page);
   if (normalized === 'eventDetail' && params.eventId) return `/events/${params.eventId}`;
   if (normalized === 'pollDetail' && params.pollId) return `/polls/${params.pollId}`;
+  if (normalized === 'forumDetail' && params.postId) return `/forum/${params.postId}`;
   if (normalized === 'documentDetail' && params.documentId) return `/documents/${params.documentId}`;
   return USER_PAGE_PATHS[normalized];
 }
